@@ -1,6 +1,6 @@
 # Artha System Architecture
 
-Artha is a real-time Market Sentiment Engine for the Nepal Stock Exchange (NEPSE). It leverages AI (Gemini), Web Scraping (Firecrawl), and MongoDB to provide high-fidelity market insights.
+Artha is a real-time Market Sentiment Engine for the Nepal Stock Exchange (NEPSE). It leverages AI (Gemini), Web Scraping (Firecrawl), and MongoDB to provide high-fidelity market insights with industry-specific granularity.
 
 ## 📊 High-Level Workflow
 
@@ -13,72 +13,81 @@ graph TD
         B --> B2[Firecrawl: Fetch Live NEPSE Index]
     end
 
-    B1 --> C[News Deduplicator]
-    C -->|Fuzzy Jaccard Similarity| D[Unique Article Set]
+    B1 --> C[News Extractor Utility]
+    C -->|Filtering & Cleanup| D[Clean Article Payload]
+    D --> E[News Deduplicator]
+    E -->|Fuzzy Jaccard Similarity| F[Unique Article Set]
 
-    subgraph "AI Core"
-        D --> E[Gemini 1.5 Analysis]
-        E --> E1[Sentiment Score -1 to +1]
-        E --> E2[Category Classification]
-        E --> E3[Impact Weighting]
+    subgraph "AI Core: Native JSON Mode"
+        F --> G[Gemini 1.5 Flash Analysis]
+        G --> G1[Sentiment Score -1 to +1]
+        G --> G2[Sector Classification: Banking, Hydro, etc.]
+        G --> G3[Category Classification: Policy, Macro, etc.]
+        G --> G4[Impact Weighting]
     end
 
-    E1 & E2 & E3 & B2 --> F[Signal Calculator]
-    F -->|Weighted Averaging| G[Market Signal Object]
+    G1 & G2 & G3 & G4 & B2 --> H[Signal Calculator]
+    H -->|Weighted Averaging| I[Market Signal Object]
 
-    G --> H[(MongoDB Atlas)]
+    I --> J[(MongoDB Atlas)]
 
     subgraph "Frontend Dashboard"
-        H --> I[React Application]
-        I --> J[Score Gauge]
-        I --> K[Momentum Area Chart]
-        I --> L[Intelligence Feed]
+        J --> K[React Application]
+        K --> L[Score Gauge & Sentiment Chart]
+        K --> M[Sector Activity Heatmap]
+        K --> N[Intelligence Feed]
     end
 
     style B1 fill:#f9f,stroke:#333,stroke-width:1px
-    style E fill:#98749e,stroke:#fff,stroke-width:2px,color:#fff
-    style H fill:#00ed64,stroke:#333
-    style I fill:#61dbfb,stroke:#333
+    style G fill:#98749e,stroke:#fff,stroke-width:2px,color:#fff
+    style J fill:#00ed64,stroke:#333
+    style K fill:#61dbfb,stroke:#333
 ```
 
 ## 🧠 Core Components
 
-### 1. The Scraper (Firecrawl)
+### 1. Sensory Input (Scraper & Extractor)
 
-The `ScraperService` acts as the sensory input. It dynamically converts complex Nepali news portals into clean Markdown. It features a **Multi-Source Failover** for the NEPSE index—if one financial portal is down, it automatically attempts to fetch the live index from another.
+The `ScraperService` orchestrates raw data acquisition, while the `NewsExtractor` utility handles the heavy lifting of cleaning.
+
+- **Noise Filtering**: Automatically ignores non-news links (video tutorials, login pages, newsletter signups).
+- **Headline Sanitization**: Strips residual markdown and image tags to ensure clean input for the AI.
+- **Failover Indexing**: Multi-source logic ensures the live NEPSE index is captured even if one financial portal is down.
 
 ### 2. News Deduplicator
 
-To ensure market signals aren't skewed by redundant reporting, we use a **Jaccard Similarity** algorithm. It normalizes headlines (removing stopwords and special characters) and performs fuzzy matching to ensure a single event reported by multiple outlets only gets analyzed **once**.
+To prevent "Echo Chamber" bias where 5 news outlets report the same event, we use a **Jaccard Similarity** algorithm. It ensures that a single event only impacts the market signal once, regardless of how many sources cover it.
 
-### 3. AI Analysis Engine (Gemini)
+### 3. Intelligence Engine (Gemini 1.5)
 
-The system uses the `gemini-1.5-flash` model as a financial analyst. For every unique article, it determines:
+The AI analysis has been upgraded to use **Native JSON Response Mode** (`responseMimeType: "application/json"`). This ensures zero parsing errors.
 
-- **Sentiment**: Bullish vs Bearish intensity.
-- **Category**: Classifies news into _Policy, Dividend, Macro,_ or _General_.
-- **Impact Weighting**: Assigns higher importance to regulatory news (NRB) or Blue-chip company announcements.
+- **Sector Intelligence**: Articles are now mapped to the 13 official NEPSE sectors + a "Market-wide" category.
+- **Financial Context**: The engine understands Nepali financial nuances (e.g., NRB directives, IPOs, Dividend declarations).
+- **Concurrency Control**: Optimized with `p-limit` to handle batch analysis without hitting API rate limits.
 
-### 4. Signal Calculator
+### 4. Logic Layer (SOC & DRY)
 
-This service calculates the **Weighted Sentiment Score**. It doesn't treat all news as equal; an NRB interest rate hike carries 3x the weight of general market commentary. This produces the "Market Pulse" score seen on the gauge.
+The backend follows a strict **Separation of Concerns**:
+
+- **SentimentReporter**: Centralized summary generation logic.
+- **SignalCalculator**: Pure mathematical logic for weighting and averaging.
+- **ThemeUtility (Frontend)**: A single source of truth for sentiment thresholds and color mapping.
 
 ### 5. Frontend Dashboard
 
-A modern, minimalist UI built with React and Tailwind CSS.
+A modern UI designed with a custom thematic palette (`#98749e` Primary).
 
-- **Score Gauge**: Visual representation of current market fear/greed.
-- **Sentiment Chart**: Area chart showing the correlation between AI sentiment trends and the NEPSE index.
-- **Intelligence Cards**: Real-time cards showing the specific reasoning behind the AI's classification for each story.
+- **Sector Activity Heatmap**: A donut chart visualizing news volume and average sentiment for specific industries.
+- **Intelligence Feed**: Displays the "Sector" and "Category" for every analyzed story, allowing for granular audit of the AI's reasoning.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React, Tailwind CSS, Lucide Icons, Recharts.
+- **Frontend**: React 18, Tailwind CSS, Recharts, Lucide.
 - **Backend**: Node.js, Express, TypeScript, Node-cron.
-- **AI**: Google Generative AI (Gemini).
-- **Data Source**: Firecrawl API (Stealth Headless Scraping).
-- **Database**: MongoDB (Mongoose).
+- **AI**: Google Generative AI (Gemini Flash).
+- **Infrastructure**: Firecrawl (Stealth Scraping), MongoDB (Mongoose).
 
 ---
 
-_Artha v2.0 - Built for Nepali Market Intelligence._
+_Artha v2.5 - Advanced Sector Intelligence for NEPSE._

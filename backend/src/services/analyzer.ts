@@ -13,13 +13,16 @@ export class AnalysisEngine {
     this.genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
     this.modelNames = [config.GEMINI_MODEL];
     this.models = this.modelNames.map(name =>
-      this.genAI.getGenerativeModel({ model: name })
+      this.genAI.getGenerativeModel({
+        model: name,
+        generationConfig: { responseMimeType: "application/json" }
+      })
     );
   }
 
   async analyzeArticles(newsItems: ScrapedNews[]): Promise<Article[]> {
     // Process articles in parallel with a limit (e.g., 5 concurrent requests)
-    const limit = pLimit(5);
+    const limit = pLimit(2);
 
     const tasks = newsItems.map(news => limit(async () => {
       try {

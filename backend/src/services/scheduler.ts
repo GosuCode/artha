@@ -11,11 +11,11 @@ export class SchedulerService {
     private calculator = new SignalCalculator();
 
     start(): void {
-        // Run every X hours based on config
-        const interval = config.SCRAPE_INTERVAL_HOURS;
-        const cronExpression = `0 */${interval} * * *`;
+        const interval = config.SCRAPE_INTERVAL_MINUTES;
+        // Run every X minutes
+        const cronExpression = `*/${interval} * * * *`;
 
-        console.log(`⏰ Scheduler initialized: Running every ${interval} hours (${cronExpression})`);
+        console.log(`⏰ Scheduler initialized: Running every ${interval} minutes (${cronExpression})`);
 
         cron.schedule(cronExpression, async () => {
             console.log('🔄 Scheduled task: Starting market sentiment update...');

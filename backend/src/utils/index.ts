@@ -2,17 +2,26 @@
 
 export class ResponseParser {
   static cleanJsonResponse(response: string): string {
-    return response
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim();
+    // Find the first '{' and the last '}'
+    const firstBrace = response.indexOf('{');
+    const lastBrace = response.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1) return response;
+
+    let cleaned = response.substring(firstBrace, lastBrace + 1);
+
+    // Remove potential trailing commas before closing braces/brackets
+    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+
+    return cleaned;
   }
 
   static safeJsonParse<T>(response: string, fallback: T): T {
     try {
-      return JSON.parse(this.cleanJsonResponse(response));
+      const cleaned = this.cleanJsonResponse(response);
+      return JSON.parse(cleaned);
     } catch (error) {
-      console.error('Failed to parse JSON response:', error);
+      console.error('Failed to parse JSON response. Raw:', response.slice(0, 100));
       return fallback;
     }
   }
@@ -133,7 +142,7 @@ export class NewsExtractor {
       let url = match[2].trim();
 
       if (title.startsWith('!') ||
-        ['home', 'menu', 'login', 'register', 'about us', 'contact', 'privacy', 'terms'].some(w =>
+        ['home', 'menu', 'login', 'register', 'about us', 'contact', 'privacy', 'terms', 'video', 'tutorial', 'account', 'subscribe', 'newsletter', 'forgot password'].some(w =>
           title.toLowerCase().includes(w))) {
         continue;
       }
@@ -151,7 +160,10 @@ export class NewsExtractor {
 
       const content = contentLines.join(' ').slice(0, 300) || title;
 
-      news.push({ source, headline: title.slice(0, 200), url, content });
+      // Clean headline of residual markdown/images
+      const cleanHeadline = title.replace(/!\[.*?\]\(.*?\)/g, '').replace(/\[.*?\]\(.*?\)/g, '').slice(0, 200);
+
+      news.push({ source, headline: cleanHeadline, url, content });
     }
     return news;
   }

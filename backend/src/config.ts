@@ -7,7 +7,7 @@ export const config = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest',
   FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY || '',
-  SCRAPE_INTERVAL_HOURS: parseInt(process.env.SCRAPE_INTERVAL_HOURS || '4'),
+  SCRAPE_INTERVAL_MINUTES: parseInt(process.env.SCRAPE_INTERVAL_MINUTES || '60'),
   NEWS_SOURCES: [
     { name: 'Merolagani', url: 'https://merolagani.com' },
     { name: 'Bizmandu', url: 'https://bizmandu.com' },
