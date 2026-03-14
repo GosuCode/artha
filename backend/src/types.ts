@@ -8,6 +8,7 @@ export interface Article {
   category: NewsCategory;
   sentimentScore: number;
   impactWeight: number;
+  modelUsed?: string;
   publishedAt?: Date;
 }
 
@@ -33,4 +34,5 @@ export interface SentimentAnalysisResult {
   category: NewsCategory;
   impactWeight: number;
   reasoning: string;
+  modelUsed?: string;
 }

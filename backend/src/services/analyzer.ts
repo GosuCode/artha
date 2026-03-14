@@ -4,11 +4,15 @@ import type { Article, ScrapedNews, SentimentAnalysisResult, NewsCategory } from
 
 export class AnalysisEngine {
   private genAI: GoogleGenerativeAI;
-  private model: any;
+  private models: any[];
+  private modelNames: string[];
 
   constructor() {
     this.genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.modelNames = [config.GEMINI_MODEL];
+    this.models = this.modelNames.map(name => 
+      this.genAI.getGenerativeModel({ model: name })
+    );
   }
 
   async analyzeArticles(newsItems: ScrapedNews[]): Promise<Article[]> {
@@ -34,14 +38,21 @@ export class AnalysisEngine {
   private async analyzeSingleArticle(news: ScrapedNews): Promise<SentimentAnalysisResult> {
     const prompt = this.buildAnalysisPrompt(news);
 
-    try {
-      const result = await this.model.generateContent(prompt);
-      const response = result.response.text();
-      return this.parseAnalysisResponse(response);
-    } catch (error) {
-      console.error('Gemini analysis failed:', error);
-      return this.getDefaultAnalysis();
+    // Try each model in order
+    for (let i = 0; i < this.models.length; i++) {
+      try {
+        const result = await this.models[i].generateContent(prompt);
+        const response = result.response.text();
+        return this.parseAnalysisResponse(response);
+      } catch (error) {
+        console.warn(`Model ${this.modelNames[i]} failed for "${news.headline.slice(0, 30)}..."`, error instanceof Error ? error.message.slice(0, 100) : 'Unknown error');
+        // Continue to next model
+      }
     }
+    
+    // All models failed
+    console.error('All Gemini models failed for article');
+    return this.getDefaultAnalysis();
   }
 
   private buildAnalysisPrompt(news: ScrapedNews): string {

@@ -22,27 +22,32 @@ export class ScraperService {
       }
     }
     
+    // If no articles scraped, return empty (no mock data)
+    if (allNews.length === 0) {
+      console.log('No articles scraped from any source');
+    }
+    
     return allNews;
   }
 
-  private async scrapeSource(sourceName: string, baseUrl: string): Promise<ScrapedNews[]> {
-    const scrapeUrl = sourceName === 'Merolagani' 
-      ? `${baseUrl}/LatestNews.aspx`
-      : sourceName === 'Bizmandu'
-      ? `${baseUrl}/category/share-market`
-      : `${baseUrl}/news`;
-
+  private async scrapeSource(sourceName: string, url: string): Promise<ScrapedNews[]> {
     try {
-      const result = await this.firecrawl.scrapeUrl(scrapeUrl, {
+      const result = await this.firecrawl.scrapeUrl(url, {
         formats: ['markdown'],
         onlyMainContent: true,
+        waitFor: 3000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
       });
 
       if (!result.success || !result.markdown) {
-        throw new Error(`Failed to scrape ${sourceName}: ${result.error}`);
+        console.error(`Firecrawl failed for ${sourceName}:`, result.error);
+        return [];
       }
 
-      return this.parseNewsContent(sourceName, result.markdown, baseUrl);
+      console.log(`Firecrawl success for ${sourceName}, markdown length: ${result.markdown.length}`);
+      return this.parseNewsContent(sourceName, result.markdown, url);
     } catch (error) {
       console.error(`Error scraping ${sourceName}:`, error);
       return [];
@@ -51,39 +56,62 @@ export class ScraperService {
 
   private parseNewsContent(source: string, markdown: string, baseUrl: string): ScrapedNews[] {
     const news: ScrapedNews[] = [];
-    const lines = markdown.split('\n').filter(line => line.trim());
     
-    let currentHeadline = '';
-    let currentContent = '';
+    // Detect 404/error pages - look for clear 404 indicators, not just keywords anywhere
+    const lowerMarkdown = markdown.toLowerCase();
+    const errorIndicators = [
+      '404 not found',
+      'this page can\'t be found',
+      'error 404',
+      'oops! that page can\'t be found',
+    ];
+    const isErrorPage = errorIndicators.some(pattern => lowerMarkdown.includes(pattern));
     
-    for (const line of lines) {
-      const trimmed = line.trim();
-      
-      if (trimmed.startsWith('# ') || trimmed.startsWith('## ')) {
-        if (currentHeadline && currentContent) {
-          news.push({
-            source,
-            headline: currentHeadline.replace(/^#+\s*/, ''),
-            url: baseUrl,
-            content: currentContent.trim(),
-          });
-        }
-        currentHeadline = trimmed;
-        currentContent = '';
-      } else if (trimmed.length > 20) {
-        currentContent += trimmed + ' ';
-      }
+    if (isErrorPage) {
+      console.warn(`Error page detected from ${source}`);
+      return [];
     }
+
+    // Find all markdown links with their context
+    const linkRegex = /\[([^\]]{10,200})\]\(([^)]+)\)/g;
     
-    if (currentHeadline && currentContent) {
+    // Extract all links from the markdown
+    let match;
+    while ((match = linkRegex.exec(markdown)) !== null) {
+      const title = match[1].trim();
+      let url = match[2].trim();
+      
+      // Skip images and navigation links
+      if (title.startsWith('!') || 
+          ['home', 'menu', 'login', 'register', 'about us', 'contact', 'privacy', 'terms'].some(w => 
+            title.toLowerCase().includes(w))) {
+        continue;
+      }
+      
+      // Build full URL
+      if (!url.startsWith('http')) {
+        url = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+      }
+      
+      // Find nearby content (next few non-empty lines after this link)
+      const linkIndex = markdown.indexOf(match[0]);
+      const afterLink = markdown.slice(linkIndex + match[0].length, linkIndex + 800);
+      const contentLines = afterLink.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 30 && !l.startsWith('[') && !l.startsWith('!') && !l.startsWith('#'))
+        .slice(0, 2);
+      
+      const content = contentLines.join(' ').slice(0, 300) || title;
+      
       news.push({
         source,
-        headline: currentHeadline.replace(/^#+\s*/, ''),
-        url: baseUrl,
-        content: currentContent.trim(),
+        headline: title.slice(0, 200),
+        url,
+        content,
       });
     }
     
-    return news.slice(0, 10);
+    console.log(`Extracted ${news.length} articles from ${source}`);
+    return news.slice(0, 12);
   }
 }
