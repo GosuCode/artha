@@ -48,7 +48,8 @@ export class SchedulerService {
             const overallScore = this.calculator.calculateWeightedScore(analyzedArticles);
             const summary = this.analyzer.generateMarketSummary(analyzedArticles, overallScore);
 
-            const signalData = this.calculator.createMarketSignal(analyzedArticles, summary);
+            const liveIndex = await this.scraper.fetchLiveNepseIndex();
+            const signalData = this.calculator.createMarketSignal(analyzedArticles, summary, liveIndex);
 
             const signal = new MarketSignalModel(signalData);
             await signal.save();

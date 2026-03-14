@@ -67,8 +67,7 @@ export class AnalysisEngine {
     }
 
     // All models failed
-    ErrorHandler.logError('Analyzer', 'All Gemini models failed for article');
-    return this.getDefaultAnalysis();
+    throw new Error(`All Gemini models failed for article: ${news.headline}`);
   }
 
   private buildAnalysisPrompt(news: ScrapedNews): string {
@@ -121,14 +120,6 @@ Return ONLY valid JSON, no markdown formatting.
     };
   }
 
-  private getDefaultAnalysis(): SentimentAnalysisResult {
-    return {
-      sentimentScore: 0,
-      category: 'General',
-      impactWeight: 1.0,
-      reasoning: 'Default analysis due to processing error',
-    };
-  }
 
   generateMarketSummary(articles: Article[], overallScore: number): string {
     const bullishCount = articles.filter(a => a.sentimentScore > 0.2).length;

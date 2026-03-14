@@ -63,7 +63,7 @@ export class KeywordDetector {
     }
 
     // Check for blue chip company mentions
-    const blueChipMentioned = blueChipCompanies.some(ticker => 
+    const blueChipMentioned = blueChipCompanies.some(ticker =>
       lowerText.includes(ticker.toLowerCase())
     );
     if (blueChipMentioned) {
@@ -71,9 +71,42 @@ export class KeywordDetector {
       reasons.push('Blue chip company mention');
     }
 
-    return { 
-      boost, 
-      reason: reasons.length > 0 ? reasons.join(', ') : 'Standard weight' 
+    return {
+      boost,
+      reason: reasons.length > 0 ? reasons.join(', ') : 'Standard weight'
     };
+  }
+}
+
+export class NewsDeduplicator {
+  static normalize(text: string): string {
+    return text.toLowerCase()
+      .replace(/[^\w\s\u0900-\u097F]/gi, '') // Keep alphanumeric and Nepali chars
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  static getSimilarityScore(h1: string, h2: string): number {
+    const n1 = this.normalize(h1);
+    const n2 = this.normalize(h2);
+
+    if (n1 === n2) return 1.0;
+
+    const words1 = n1.split(' ');
+    const words2 = n2.split(' ');
+
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+
+    return intersection.size / union.size;
+  }
+
+  static isDuplicate(headline: string, existingHeadlines: string[], threshold = 0.75): boolean {
+    return existingHeadlines.some(existing =>
+      this.getSimilarityScore(headline, existing) >= threshold
+    );
   }
 }

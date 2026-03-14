@@ -47,13 +47,16 @@ router.post('/scrape/trigger', async (_req: Request, res: Response) => {
     const scrapedNews = await scraper.scrapeAllSources();
     console.log(`Scraped ${scrapedNews.length} articles`);
 
+    const liveIndex = await scraper.fetchLiveNepseIndex();
+    console.log(`Live Index: ${liveIndex}`);
+
     const analyzedArticles = await analyzer.analyzeArticles(scrapedNews);
     console.log(`Analyzed ${analyzedArticles.length} articles`);
 
     const overallScore = calculator.calculateWeightedScore(analyzedArticles);
     const summary = analyzer.generateMarketSummary(analyzedArticles, overallScore);
 
-    const signalData = calculator.createMarketSignal(analyzedArticles, summary);
+    const signalData = calculator.createMarketSignal(analyzedArticles, summary, liveIndex);
 
     // Save to MongoDB
     const signal = new MarketSignalModel(signalData);
