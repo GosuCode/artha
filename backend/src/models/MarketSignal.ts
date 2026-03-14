@@ -11,6 +11,15 @@ const ArticleSchema = new Schema({
         enum: ['Policy', 'Dividend', 'Macro', 'General'],
         required: true
     },
+    sector: {
+        type: String,
+        enum: [
+            'Banking', 'Development Bank', 'Finance', 'Hotels & Tourism',
+            'Hydropower', 'Investment', 'Life Insurance', 'Manufacturing & Processing',
+            'Microfinance', 'Mutual Fund', 'Non Life Insurance', 'Others', 'Trading', 'Market-wide'
+        ],
+        required: true
+    },
     sentimentScore: { type: Number, required: true },
     impactWeight: { type: Number, required: true },
     publishedAt: { type: Date }

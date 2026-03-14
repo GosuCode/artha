@@ -1,30 +1,12 @@
 import { Newspaper, Scale, ArrowUpRight } from "lucide-react";
 import type { Article } from "../types";
+import { getCategoryTheme, getSentimentColor } from "../utils/theme";
 
 interface ArticleListProps {
   articles: Article[];
 }
 
 export function ArticleList({ articles }: ArticleListProps) {
-  const getCategoryTheme = (category: string) => {
-    switch (category) {
-      case "Policy":
-        return "bg-[#98749e15] text-[#98749e]";
-      case "Dividend":
-        return "bg-[#ac968915] text-[#ac9689]";
-      case "Macro":
-        return "bg-[#c6aeae30] text-[#060406]";
-      default:
-        return "bg-gray-100 text-gray-400";
-    }
-  };
-
-  const getSentimentBg = (score: number) => {
-    if (score > 0.2) return "bg-[#98749e]";
-    if (score < -0.2) return "bg-[#ef4444]";
-    return "bg-[#c6aeae]";
-  };
-
   return (
     <div className="flex flex-col h-full uppercase tracking-tighter">
       <div className="flex items-center justify-between mb-8 px-2">
@@ -55,13 +37,16 @@ export function ArticleList({ articles }: ArticleListProps) {
             <div className="flex items-start justify-between gap-6">
               <div className="flex-1">
                 {/* Meta Header */}
-                <div className="flex items-center gap-4 mb-3">
+                <div className="flex items-center flex-wrap gap-3 mb-3">
                   <span
                     className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${getCategoryTheme(article.category)}`}
                   >
                     {article.category}
                   </span>
-                  <div className="flex items-center gap-1 text-[10px] text-[#06040644] font-black uppercase tracking-widest">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg bg-gray-50 text-[var(--secondary)] border border-[var(--border)]">
+                    {article.sector}
+                  </span>
+                  <div className="flex items-center gap-1 text-[10px] text-[#06040644] font-black uppercase tracking-widest ml-1">
                     <Scale className="w-3.5 h-3.5" />
                     <span>Impact: {article.impactWeight}x</span>
                   </div>
@@ -92,7 +77,10 @@ export function ArticleList({ articles }: ArticleListProps) {
 
               {/* Score Box */}
               <div
-                className={`${getSentimentBg(article.sentimentScore)} w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/5`}
+                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/5"
+                style={{
+                  backgroundColor: getSentimentColor(article.sentimentScore),
+                }}
               >
                 <span className="text-white font-black text-xs">
                   {article.sentimentScore > 0 ? "+" : ""}

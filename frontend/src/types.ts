@@ -4,6 +4,7 @@ export interface Article {
   url: string;
   content: string;
   category: 'Policy' | 'Dividend' | 'Macro' | 'General';
+  sector: string;
   sentimentScore: number;
   impactWeight: number;
   publishedAt?: string;

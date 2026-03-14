@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import pLimit from 'p-limit';
 import { config } from '../config.js';
 import type { Article, ScrapedNews, SentimentAnalysisResult, NewsCategory } from '../types.js';
-import { ResponseParser, ErrorHandler, MathUtils, KeywordDetector } from '../utils/index.js';
+import { ResponseParser, ErrorHandler, MathUtils, KeywordDetector, SentimentReporter } from '../utils/index.js';
 
 export class AnalysisEngine {
   private genAI: GoogleGenerativeAI;
@@ -27,6 +27,7 @@ export class AnalysisEngine {
         return {
           ...news,
           category: analysis.category,
+          sector: analysis.sector,
           sentimentScore: analysis.sentimentScore,
           impactWeight: analysis.impactWeight,
         } as Article;
@@ -81,24 +82,19 @@ Content: ${news.content}
 
 Provide analysis in this exact JSON format:
 {
-  "sentimentScore": number between -1.0 (extremely bearish/panic) and +1.0 (extremely bullish/euphoria),
+  "sentimentScore": number between -1.0 (extremely bearish) and +1.0 (extremely bullish),
   "category": one of ["Policy", "Dividend", "Macro", "General"],
-  "impactWeight": number (1.0 default, 3.0 for NRB/Monetary Policy, 2.0 for blue-chip dividends, 0.5 for general commentary),
+  "sector": one of ["Banking", "Development Bank", "Finance", "Hotels & Tourism", "Hydropower", "Investment", "Life Insurance", "Manufacturing & Processing", "Microfinance", "Mutual Fund", "Non Life Insurance", "Others", "Trading", "Market-wide"],
+  "impactWeight": number (1.0 default, up to 3.5),
   "reasoning": "brief explanation"
 }
 
-Rules:
-1. "Policy": NRB announcements, monetary policy, interest rate changes, regulations
-2. "Dividend": Bonus/dividend announcements from companies
-3. "Macro": Economic indicators, inflation, GDP, trade data
-4. "General": Market commentary, daily trading summaries
-5. Blue chip companies: ${config.BLUE_CHIP_COMPANIES.join(', ')}
-6. "Profit Taking" should be Neutral-Positive (not Bearish)
-7. Weight 3x for NRB/Government policy news
-8. Weight 2x for major company (blue chip) dividend news
-9. Weight 0.5x for vague commentary without data points
+Rules for Sector:
+1. "Market-wide": Use for general index news, NRB policy, or macro data affecting everything.
+2. Specific Sector: If news is about a specific company or industry (e.g., a Hydro project or a Bank's profit), use that exact category.
+3. Be precise. If it's about a commercial bank, use "Banking". If it's about NTC or Shivam Cement, use "Others" or "Manufacturing & Processing" respectively.
 
-Return ONLY valid JSON, no markdown formatting.
+Return ONLY valid JSON.
 `;
   }
 
@@ -106,6 +102,7 @@ Return ONLY valid JSON, no markdown formatting.
     const parsed = ResponseParser.safeJsonParse(response, {
       sentimentScore: 0,
       category: 'General' as NewsCategory,
+      sector: 'Market-wide' as any,
       impactWeight: 1.0,
       reasoning: 'Default analysis',
     });
@@ -115,24 +112,13 @@ Return ONLY valid JSON, no markdown formatting.
       category: MathUtils.isValidCategory(parsed.category, ['Policy', 'Dividend', 'Macro', 'General'])
         ? (parsed.category as NewsCategory)
         : 'General',
+      sector: parsed.sector || 'Market-wide',
       impactWeight: parsed.impactWeight || 1.0,
       reasoning: parsed.reasoning || 'No reasoning provided',
     };
   }
 
-
   generateMarketSummary(articles: Article[], overallScore: number): string {
-    const bullishCount = articles.filter(a => a.sentimentScore > 0.2).length;
-    const bearishCount = articles.filter(a => a.sentimentScore < -0.2).length;
-    const policyNews = articles.filter(a => a.category === 'Policy');
-
-    let summary = `Market sentiment is ${overallScore > 0.1 ? 'positive' : overallScore < -0.1 ? 'negative' : 'neutral'}. `;
-    summary += `${bullishCount} bullish articles, ${bearishCount} bearish. `;
-
-    if (policyNews.length > 0) {
-      summary += `Key policy developments from ${policyNews.map(p => p.source).join(', ')}. `;
-    }
-
-    return summary;
+    return SentimentReporter.generateSummary(articles, overallScore);
   }
 }

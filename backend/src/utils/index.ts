@@ -110,3 +110,90 @@ export class NewsDeduplicator {
     );
   }
 }
+
+export class NewsExtractor {
+  static isErrorPage(markdown: string): boolean {
+    const lowerMarkdown = markdown.toLowerCase();
+    const errorIndicators = [
+      '404 not found',
+      'this page can\'t be found',
+      'error 404',
+      'oops! that page can\'t be found',
+    ];
+    return errorIndicators.some(pattern => lowerMarkdown.includes(pattern));
+  }
+
+  static extractLinks(markdown: string, baseUrl: string, source: string): any[] {
+    const news: any[] = [];
+    const linkRegex = /\[([^\]]{10,200})\]\(([^)]+)\)/g;
+
+    let match;
+    while ((match = linkRegex.exec(markdown)) !== null) {
+      const title = match[1].trim();
+      let url = match[2].trim();
+
+      if (title.startsWith('!') ||
+        ['home', 'menu', 'login', 'register', 'about us', 'contact', 'privacy', 'terms'].some(w =>
+          title.toLowerCase().includes(w))) {
+        continue;
+      }
+
+      if (!url.startsWith('http')) {
+        url = url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`;
+      }
+
+      const linkIndex = markdown.indexOf(match[0]);
+      const afterLink = markdown.slice(linkIndex + match[0].length, linkIndex + 800);
+      const contentLines = afterLink.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 30 && !l.startsWith('[') && !l.startsWith('!') && !l.startsWith('#'))
+        .slice(0, 2);
+
+      const content = contentLines.join(' ').slice(0, 300) || title;
+
+      news.push({ source, headline: title.slice(0, 200), url, content });
+    }
+    return news;
+  }
+
+  static findNepseIndex(markdown: string): number {
+    const patterns = [
+      /(?:NEPSE Index|Index Value|NEPSE)\s*[:\s]*([\d,.]+)/i,
+      /NEPSE.*?(\d{1,2},\d{3}\.\d{2}|\d{4}\.\d{2})/
+    ];
+
+    for (const pattern of patterns) {
+      const match = markdown.match(pattern);
+      if (match && match[1]) {
+        const value = parseFloat(match[1].replace(/,/g, ''));
+        if (value > 500 && value < 5000) return value;
+      }
+    }
+    return 0;
+  }
+}
+
+export class SentimentReporter {
+  static generateSummary(articles: any[], overallScore: number): string {
+    const bullishCount = articles.filter(a => a.sentimentScore > 0.2).length;
+    const bearishCount = articles.filter(a => a.sentimentScore < -0.2).length;
+
+    const sectors = [...new Set(articles.map(a => a.sector))];
+    const topSector = sectors
+      .map(s => ({
+        name: s,
+        count: articles.filter(a => a.sector === s).length,
+        sentiment: articles.filter(a => a.sector === s).reduce((acc, curr) => acc + curr.sentimentScore, 0) / Math.max(1, articles.filter(a => a.sector === s).length)
+      }))
+      .sort((a, b) => b.count - a.count)[0];
+
+    let summary = `Market sentiment is ${overallScore > 0.1 ? 'positive' : overallScore < -0.1 ? 'negative' : 'neutral'}. `;
+    summary += `${bullishCount} bullish and ${bearishCount} bearish signals detected. `;
+
+    if (topSector) {
+      summary += `Primary activity seen in ${topSector.name} sector with ${topSector.sentiment > 0.1 ? 'bullish' : topSector.sentiment < -0.1 ? 'bearish' : 'mixed'} undertones. `;
+    }
+
+    return summary;
+  }
+}

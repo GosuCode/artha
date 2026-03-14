@@ -11,6 +11,7 @@ import { useSentiment } from "./hooks/useSentiment";
 import { ScoreGauge } from "./components/SentimentBadge";
 import { SentimentChart } from "./components/SentimentChart";
 import { ArticleList } from "./components/ArticleList";
+import { SectorHeatmap } from "./components/SectorHeatmap";
 
 function App() {
   const { signal, history, loading, error, triggerScrape } = useSentiment();
@@ -151,16 +152,21 @@ function App() {
               </div>
             </div>
 
-            {/* Charts & Articles Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              <div className="glass-card p-8">
+            {/* Middle Row: Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+              <div className="glass-card p-8 lg:col-span-3">
                 <SentimentChart
                   data={history.length > 0 ? history : [signal]}
                 />
               </div>
-              <div className="glass-card p-8">
-                <ArticleList articles={signal.articles} />
+              <div className="glass-card p-8 lg:col-span-2">
+                <SectorHeatmap articles={signal.articles} />
               </div>
+            </div>
+
+            {/* Bottom Row: Articles */}
+            <div className="glass-card p-8 max-w-4xl mx-auto w-full">
+              <ArticleList articles={signal.articles} />
             </div>
           </div>
         )}

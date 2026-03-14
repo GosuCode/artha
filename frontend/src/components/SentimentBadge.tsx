@@ -1,34 +1,36 @@
-import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Activity,
-  ShieldAlert,
-} from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
+import { getSentimentType, getSentimentColor } from "../utils/theme";
 
 interface SentimentBadgeProps {
   score: number;
 }
 
 export function SentimentBadge({ score }: SentimentBadgeProps) {
+  const type = getSentimentType(score);
+
   const getStyles = () => {
-    if (score > 0.2) return "bg-[#98749e15] text-[#98749e] border-[#98749e44]";
-    if (score < -0.2) return "bg-[#ef444415] text-[#ef4444] border-[#ef444444]";
+    if (type === "bullish")
+      return "bg-[#98749e15] text-[#98749e] border-[#98749e44]";
+    if (type === "bearish")
+      return "bg-[#ef444415] text-[#ef4444] border-[#ef444444]";
     return "bg-[#c6aeae15] text-[#060406] border-[#c6aeae44]";
   };
 
   const getLabel = () => {
-    if (score > 0.2)
-      return {
-        text: "Bullish Intensity",
-        icon: <TrendingUp className="w-4 h-4" />,
-      };
-    if (score < -0.2)
-      return {
-        text: "Bearish Caution",
-        icon: <TrendingDown className="w-4 h-4" />,
-      };
-    return { text: "Market Neutral", icon: <Minus className="w-4 h-4" /> };
+    switch (type) {
+      case "bullish":
+        return {
+          text: "Bullish Intensity",
+          icon: <TrendingUp className="w-4 h-4" />,
+        };
+      case "bearish":
+        return {
+          text: "Bearish Caution",
+          icon: <TrendingDown className="w-4 h-4" />,
+        };
+      default:
+        return { text: "Market Neutral", icon: <Minus className="w-4 h-4" /> };
+    }
   };
 
   const label = getLabel();
@@ -51,8 +53,7 @@ interface ScoreGaugeProps {
 
 export function ScoreGauge({ score }: ScoreGaugeProps) {
   const percentage = ((score + 1) / 2) * 100;
-  const strokeColor =
-    score > 0.2 ? "#98749e" : score < -0.2 ? "#ef4444" : "#ac9689";
+  const strokeColor = getSentimentColor(score);
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 glass-card">
