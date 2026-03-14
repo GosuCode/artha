@@ -1,70 +1,116 @@
-import { Newspaper, ExternalLink, Tag, Scale } from 'lucide-react';
-import type { Article } from '../types';
+import { Newspaper, Scale, ArrowUpRight } from "lucide-react";
+import type { Article } from "../types";
 
 interface ArticleListProps {
   articles: Article[];
 }
 
 export function ArticleList({ articles }: ArticleListProps) {
-  const getCategoryColor = (category: string) => {
+  const getCategoryTheme = (category: string) => {
     switch (category) {
-      case 'Policy': return 'bg-purple-500/20 text-purple-400';
-      case 'Dividend': return 'bg-blue-500/20 text-blue-400';
-      case 'Macro': return 'bg-orange-500/20 text-orange-400';
-      default: return 'bg-gray-500/20 text-gray-400';
+      case "Policy":
+        return "bg-[#98749e15] text-[#98749e]";
+      case "Dividend":
+        return "bg-[#ac968915] text-[#ac9689]";
+      case "Macro":
+        return "bg-[#c6aeae30] text-[#060406]";
+      default:
+        return "bg-gray-100 text-gray-400";
     }
   };
 
-  const getSentimentColor = (score: number) => {
-    if (score > 0.2) return 'text-bullish';
-    if (score < -0.2) return 'text-bearish';
-    return 'text-neutral';
+  const getSentimentBg = (score: number) => {
+    if (score > 0.2) return "bg-[#98749e]";
+    if (score < -0.2) return "bg-[#ef4444]";
+    return "bg-[#c6aeae]";
   };
 
   return (
-    <div className="bg-gray-800 rounded-xl p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Newspaper className="w-5 h-5 text-gray-400" />
-        <h3 className="text-lg font-semibold">Latest Articles ({articles.length})</h3>
+    <div className="flex flex-col h-full uppercase tracking-tighter">
+      <div className="flex items-center justify-between mb-8 px-2">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-white shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
+            <Newspaper className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black font-display tracking-tight">
+              Market Intelligence
+            </h3>
+            <p className="text-[10px] text-[var(--secondary)] font-bold opacity-70 italic uppercase tracking-widest">
+              {articles.length} signals detected today
+            </p>
+          </div>
+        </div>
       </div>
-      
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+
+      <div
+        className="space-y-4 custom-scrollbar pr-2 overflow-y-auto"
+        style={{ maxHeight: "600px" }}
+      >
         {articles.map((article, idx) => (
-          <div key={idx} className="bg-gray-700/50 rounded-lg p-4 hover:bg-gray-700 transition-colors">
-            <div className="flex items-start justify-between gap-3">
+          <div
+            key={idx}
+            className="bg-white border border-[var(--border)] rounded-2xl p-6 transition-all duration-300 hover:shadow-lg"
+          >
+            <div className="flex items-start justify-between gap-6">
               <div className="flex-1">
-                <h4 className="font-medium text-sm mb-1">{article.headline}</h4>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span>{article.source}</span>
-                  <span>•</span>
-                  <span className={getCategoryColor(article.category)}>
-                    <Tag className="w-3 h-3 inline mr-1" />
+                {/* Meta Header */}
+                <div className="flex items-center gap-4 mb-3">
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${getCategoryTheme(article.category)}`}
+                  >
                     {article.category}
                   </span>
+                  <div className="flex items-center gap-1 text-[10px] text-[#06040644] font-black uppercase tracking-widest">
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>Impact: {article.impactWeight}x</span>
+                  </div>
+                </div>
+
+                {/* Headline */}
+                <h4 className="font-bold text-[var(--text)] text-sm leading-snug mb-4">
+                  {article.headline}
+                </h4>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
+                  <span className="text-[10px] font-black text-[#06040644] uppercase tracking-widest">
+                    {article.source}
+                  </span>
+
+                  <a
+                    href={article.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#06040644] hover:text-[var(--primary)] transition-colors group"
+                  >
+                    View Report
+                    <ArrowUpRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </a>
                 </div>
               </div>
-              
-              <div className="flex flex-col items-end gap-1">
-                <span className={`font-bold ${getSentimentColor(article.sentimentScore)}`}>
-                  {article.sentimentScore > 0 ? '+' : ''}{article.sentimentScore.toFixed(2)}
-                </span>
-                <span className="text-xs text-gray-400 flex items-center gap-1">
-                  <Scale className="w-3 h-3" />
-                  {article.impactWeight}x
+
+              {/* Score Box */}
+              <div
+                className={`${getSentimentBg(article.sentimentScore)} w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-black/5`}
+              >
+                <span className="text-white font-black text-xs">
+                  {article.sentimentScore > 0 ? "+" : ""}
+                  {article.sentimentScore.toFixed(1)}
                 </span>
               </div>
             </div>
-            
-            <a 
-              href={article.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2"
-            >
-              Read more <ExternalLink className="w-3 h-3" />
-            </a>
           </div>
         ))}
+
+        {articles.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 opacity-20">
+            <Newspaper className="w-12 h-12 mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest">
+              No Intelligence Gathered
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
