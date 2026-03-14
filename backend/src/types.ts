@@ -13,7 +13,7 @@ export interface Article {
 }
 
 export interface MarketSignal {
-  _id: string;
+  _id?: string;
   timestamp: Date;
   overallScore: number;
   nepseIndexAtTime: number;

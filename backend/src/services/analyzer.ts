@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import pLimit from 'p-limit';
 import { config } from '../config.js';
 import type { Article, ScrapedNews, SentimentAnalysisResult, NewsCategory } from '../types.js';
 import { ResponseParser, ErrorHandler, MathUtils, KeywordDetector } from '../utils/index.js';
@@ -11,29 +12,32 @@ export class AnalysisEngine {
   constructor() {
     this.genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
     this.modelNames = [config.GEMINI_MODEL];
-    this.models = this.modelNames.map(name => 
+    this.models = this.modelNames.map(name =>
       this.genAI.getGenerativeModel({ model: name })
     );
   }
 
   async analyzeArticles(newsItems: ScrapedNews[]): Promise<Article[]> {
-    const analyzedArticles: Article[] = [];
+    // Process articles in parallel with a limit (e.g., 5 concurrent requests)
+    const limit = pLimit(5);
 
-    for (const news of newsItems) {
+    const tasks = newsItems.map(news => limit(async () => {
       try {
         const analysis = await this.analyzeSingleArticle(news);
-        analyzedArticles.push({
+        return {
           ...news,
           category: analysis.category,
           sentimentScore: analysis.sentimentScore,
           impactWeight: analysis.impactWeight,
-        });
+        } as Article;
       } catch (error) {
         console.error(`Failed to analyze article: ${news.headline}`, error);
+        return null;
       }
-    }
+    }));
 
-    return analyzedArticles;
+    const results = await Promise.all(tasks);
+    return results.filter((article): article is Article => article !== null);
   }
 
   private async analyzeSingleArticle(news: ScrapedNews): Promise<SentimentAnalysisResult> {
@@ -45,12 +49,12 @@ export class AnalysisEngine {
         const result = await this.models[i].generateContent(prompt);
         const response = result.response.text();
         const baseAnalysis = this.parseAnalysisResponse(response);
-        
+
         // Apply keyword-based weight boost
         const fullText = `${news.headline} ${news.content}`;
         const { boost, reason } = KeywordDetector.calculateBoost(fullText, config.BLUE_CHIP_COMPANIES);
         const adjustedWeight = Math.max(baseAnalysis.impactWeight, boost);
-        
+
         return {
           ...baseAnalysis,
           impactWeight: adjustedWeight,
@@ -61,7 +65,7 @@ export class AnalysisEngine {
         // Continue to next model
       }
     }
-    
+
     // All models failed
     ErrorHandler.logError('Analyzer', 'All Gemini models failed for article');
     return this.getDefaultAnalysis();
@@ -106,11 +110,11 @@ Return ONLY valid JSON, no markdown formatting.
       impactWeight: 1.0,
       reasoning: 'Default analysis',
     });
-    
+
     return {
       sentimentScore: MathUtils.clamp(parsed.sentimentScore, -1, 1),
-      category: MathUtils.isValidCategory(parsed.category, ['Policy', 'Dividend', 'Macro', 'General']) 
-        ? (parsed.category as NewsCategory) 
+      category: MathUtils.isValidCategory(parsed.category, ['Policy', 'Dividend', 'Macro', 'General'])
+        ? (parsed.category as NewsCategory)
         : 'General',
       impactWeight: parsed.impactWeight || 1.0,
       reasoning: parsed.reasoning || 'No reasoning provided',
@@ -130,14 +134,14 @@ Return ONLY valid JSON, no markdown formatting.
     const bullishCount = articles.filter(a => a.sentimentScore > 0.2).length;
     const bearishCount = articles.filter(a => a.sentimentScore < -0.2).length;
     const policyNews = articles.filter(a => a.category === 'Policy');
-    
+
     let summary = `Market sentiment is ${overallScore > 0.1 ? 'positive' : overallScore < -0.1 ? 'negative' : 'neutral'}. `;
     summary += `${bullishCount} bullish articles, ${bearishCount} bearish. `;
-    
+
     if (policyNews.length > 0) {
       summary += `Key policy developments from ${policyNews.map(p => p.source).join(', ')}. `;
     }
-    
+
     return summary;
   }
 }

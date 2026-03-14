@@ -3,6 +3,7 @@ dotenv.config();
 
 export const config = {
   PORT: process.env.PORT || 3001,
+  MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/artha',
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
   GEMINI_MODEL: process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest',
   FIRECRAWL_API_KEY: process.env.FIRECRAWL_API_KEY || '',

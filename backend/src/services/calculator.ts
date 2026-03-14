@@ -16,17 +16,12 @@ export class SignalCalculator {
     return totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
   }
 
-  generateSignalId(): string {
-    return `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
   getMockNepseIndex(): number {
     return 2800 + Math.random() * 200;
   }
 
-  createMarketSignal(articles: Article[], summary: string): MarketSignal {
+  createMarketSignal(articles: Article[], summary: string): Omit<MarketSignal, '_id'> {
     return {
-      _id: this.generateSignalId(),
       timestamp: new Date(),
       overallScore: this.calculateWeightedScore(articles),
       nepseIndexAtTime: this.getMockNepseIndex(),

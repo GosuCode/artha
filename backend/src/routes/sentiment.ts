@@ -4,51 +4,61 @@ import { config } from '../config.js';
 import { ScraperService } from '../services/scraper.js';
 import { AnalysisEngine } from '../services/analyzer.js';
 import { SignalCalculator } from '../services/calculator.js';
-import type { MarketSignal } from '../types.js';
+import { MarketSignalModel } from '../models/MarketSignal.js';
 
 const router = Router();
 const scraper = new ScraperService();
 const analyzer = new AnalysisEngine();
 const calculator = new SignalCalculator();
 
-let latestSignal: MarketSignal | null = null;
-const signalHistory: MarketSignal[] = [];
-
-router.get('/current', (_req: Request, res: Response): void => {
-  if (!latestSignal) {
-    res.status(404).json({ error: 'No sentiment data available. Run scrape first.' });
-    return;
+router.get('/current', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const latestSignal = await MarketSignalModel.findOne().sort({ timestamp: -1 });
+    if (!latestSignal) {
+      res.status(404).json({ error: 'No sentiment data available. Run scrape first.' });
+      return;
+    }
+    res.json(latestSignal);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch latest signal' });
   }
-  res.json(latestSignal);
 });
 
-router.get('/history', (req: Request, res: Response) => {
-  const days = parseInt(req.query.days as string) || 7;
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - days);
-  
-  const filtered = signalHistory.filter(s => s.timestamp >= cutoffDate);
-  res.json(filtered);
+router.get('/history', async (req: Request, res: Response) => {
+  try {
+    const days = parseInt(req.query.days as string) || 7;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    const filtered = await MarketSignalModel.find({
+      timestamp: { $gte: cutoffDate }
+    }).sort({ timestamp: -1 });
+
+    res.json(filtered);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
 });
 
-router.post('/scrape/trigger', async (req: Request, res: Response) => {
+router.post('/scrape/trigger', async (_req: Request, res: Response) => {
   try {
     console.log('Starting manual scrape...');
-    
+
     const scrapedNews = await scraper.scrapeAllSources();
     console.log(`Scraped ${scrapedNews.length} articles`);
-    
+
     const analyzedArticles = await analyzer.analyzeArticles(scrapedNews);
     console.log(`Analyzed ${analyzedArticles.length} articles`);
-    
+
     const overallScore = calculator.calculateWeightedScore(analyzedArticles);
     const summary = analyzer.generateMarketSummary(analyzedArticles, overallScore);
-    
-    const signal = calculator.createMarketSignal(analyzedArticles, summary);
-    
-    latestSignal = signal;
-    signalHistory.push(signal);
-    
+
+    const signalData = calculator.createMarketSignal(analyzedArticles, summary);
+
+    // Save to MongoDB
+    const signal = new MarketSignalModel(signalData);
+    await signal.save();
+
     res.json({
       success: true,
       articlesProcessed: analyzedArticles.length,
@@ -64,19 +74,19 @@ router.post('/scrape/trigger', async (req: Request, res: Response) => {
 router.get('/debug/scrape/:source', async (req: Request, res: Response): Promise<void> => {
   const sourceName = req.params.source as string;
   const source = config.NEWS_SOURCES.find(s => s.name.toLowerCase() === sourceName.toLowerCase());
-  
+
   if (!source) {
     res.status(404).json({ error: 'Source not found', available: config.NEWS_SOURCES.map(s => s.name) });
     return;
   }
-  
+
   try {
     const firecrawl = new FirecrawlApp({ apiKey: config.FIRECRAWL_API_KEY });
     const result = await firecrawl.scrapeUrl(source.url, {
       formats: ['markdown'],
       onlyMainContent: true,
     });
-    
+
     if (!result.success) {
       res.status(500).json({
         source: source.name,
@@ -86,7 +96,7 @@ router.get('/debug/scrape/:source', async (req: Request, res: Response): Promise
       });
       return;
     }
-    
+
     res.json({
       source: source.name,
       url: source.url,

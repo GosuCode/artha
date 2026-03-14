@@ -1,9 +1,20 @@
 import express from 'express';
 import cors from 'cors';
+import mongoose from 'mongoose';
 import { config } from './config.js';
 import sentimentRoutes from './routes/sentiment.js';
+import { SchedulerService } from './services/scheduler.js';
 
 const app = express();
+const scheduler = new SchedulerService();
+
+// Connect to MongoDB
+mongoose.connect(config.MONGODB_URI)
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    scheduler.start();
+  })
+  .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 app.use(cors());
 app.use(express.json());
