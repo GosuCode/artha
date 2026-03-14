@@ -11,6 +11,14 @@ export const config = {
     { name: 'Merolagani', url: 'https://merolagani.com' },
     { name: 'Bizmandu', url: 'https://bizmandu.com' },
     { name: 'Sharesansar', url: 'https://www.sharesansar.com' },
+    { name: 'NepseAlpha', url: 'https://nepsealpha.com' },
+    { name: 'Bizshala', url: 'https://bizshala.com' },
+    { name: 'Investopaper', url: 'https://investopaper.com' },
+    { name: 'NewBizAge', url: 'https://www.newbusinessage.com' },
   ],
-  BLUE_CHIP_COMPANIES: ['NABIL', 'NICA', 'SCB', 'HBL', 'NMB', 'EBL', 'ADBL', 'PCBL'],
+  BLUE_CHIP_COMPANIES: [
+    'NABIL', 'NICA', 'SCB', 'HBL', 'EBL',
+    'SHIVM', 'SONA', 'HDL',
+    'CIT', 'NTC', 'NRIC',
+  ],
 };

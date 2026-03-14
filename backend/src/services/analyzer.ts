@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config.js';
 import type { Article, ScrapedNews, SentimentAnalysisResult, NewsCategory } from '../types.js';
+import { ResponseParser, ErrorHandler, MathUtils, KeywordDetector } from '../utils/index.js';
 
 export class AnalysisEngine {
   private genAI: GoogleGenerativeAI;
@@ -43,15 +44,26 @@ export class AnalysisEngine {
       try {
         const result = await this.models[i].generateContent(prompt);
         const response = result.response.text();
-        return this.parseAnalysisResponse(response);
+        const baseAnalysis = this.parseAnalysisResponse(response);
+        
+        // Apply keyword-based weight boost
+        const fullText = `${news.headline} ${news.content}`;
+        const { boost, reason } = KeywordDetector.calculateBoost(fullText, config.BLUE_CHIP_COMPANIES);
+        const adjustedWeight = Math.max(baseAnalysis.impactWeight, boost);
+        
+        return {
+          ...baseAnalysis,
+          impactWeight: adjustedWeight,
+          reasoning: `${baseAnalysis.reasoning} | Keywords: ${reason}`,
+        };
       } catch (error) {
-        console.warn(`Model ${this.modelNames[i]} failed for "${news.headline.slice(0, 30)}..."`, error instanceof Error ? error.message.slice(0, 100) : 'Unknown error');
+        ErrorHandler.logWarning('Analyzer', `Model ${this.modelNames[i]} failed for "${news.headline.slice(0, 30)}..."`, error instanceof Error ? error.message.slice(0, 100) : 'Unknown error');
         // Continue to next model
       }
     }
     
     // All models failed
-    console.error('All Gemini models failed for article');
+    ErrorHandler.logError('Analyzer', 'All Gemini models failed for article');
     return this.getDefaultAnalysis();
   }
 
@@ -88,35 +100,21 @@ Return ONLY valid JSON, no markdown formatting.
   }
 
   private parseAnalysisResponse(response: string): SentimentAnalysisResult {
-    try {
-      const cleanResponse = response
-        .replace(/```json/g, '')
-        .replace(/```/g, '')
-        .trim();
-      
-      const parsed = JSON.parse(cleanResponse);
-      
-      return {
-        sentimentScore: this.clamp(parsed.sentimentScore, -1, 1),
-        category: this.validateCategory(parsed.category),
-        impactWeight: parsed.impactWeight || 1.0,
-        reasoning: parsed.reasoning || 'No reasoning provided',
-      };
-    } catch (error) {
-      console.error('Failed to parse Gemini response:', error);
-      return this.getDefaultAnalysis();
-    }
-  }
-
-  private validateCategory(category: string): NewsCategory {
-    const validCategories: NewsCategory[] = ['Policy', 'Dividend', 'Macro', 'General'];
-    return validCategories.includes(category as NewsCategory) 
-      ? (category as NewsCategory) 
-      : 'General';
-  }
-
-  private clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
+    const parsed = ResponseParser.safeJsonParse(response, {
+      sentimentScore: 0,
+      category: 'General' as NewsCategory,
+      impactWeight: 1.0,
+      reasoning: 'Default analysis',
+    });
+    
+    return {
+      sentimentScore: MathUtils.clamp(parsed.sentimentScore, -1, 1),
+      category: MathUtils.isValidCategory(parsed.category, ['Policy', 'Dividend', 'Macro', 'General']) 
+        ? (parsed.category as NewsCategory) 
+        : 'General',
+      impactWeight: parsed.impactWeight || 1.0,
+      reasoning: parsed.reasoning || 'No reasoning provided',
+    };
   }
 
   private getDefaultAnalysis(): SentimentAnalysisResult {
