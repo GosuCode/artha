@@ -49,20 +49,21 @@ export function SentimentBadge({ score }: SentimentBadgeProps) {
 
 interface ScoreGaugeProps {
   score: number;
+  confidence?: number;
 }
 
-export function ScoreGauge({ score }: ScoreGaugeProps) {
+export function ScoreGauge({ score, confidence }: ScoreGaugeProps) {
   const percentage = ((score + 1) / 2) * 100;
   const strokeColor = getSentimentColor(score);
 
   return (
     <div className="flex flex-col items-center gap-6 p-8 glass-card">
       <div className="relative w-56 h-56 flex items-center justify-center">
+        {/* ... existing SVG code ... */}
         <svg
           viewBox="0 0 100 100"
           className="transform -rotate-90 w-full h-full"
         >
-          {/* Inner Shadow Circle */}
           <circle
             cx="50"
             cy="50"
@@ -71,7 +72,6 @@ export function ScoreGauge({ score }: ScoreGaugeProps) {
             stroke="var(--background)"
             strokeWidth="12"
           />
-          {/* Background Path */}
           <circle
             cx="50"
             cy="50"
@@ -81,7 +81,6 @@ export function ScoreGauge({ score }: ScoreGaugeProps) {
             strokeWidth="8"
             strokeLinecap="round"
           />
-          {/* Progress Path */}
           <circle
             cx="50"
             cy="50"
@@ -113,9 +112,16 @@ export function ScoreGauge({ score }: ScoreGaugeProps) {
 
       <div className="flex flex-col items-center gap-2">
         <SentimentBadge score={score} />
-        <p className="text-[11px] text-[var(--secondary)] font-medium italic">
-          Based on weighted NLP analysis
-        </p>
+        <div className="flex flex-col items-center">
+          <p className="text-[11px] text-[var(--secondary)] font-medium italic">
+            Based on weighted NLP analysis
+          </p>
+          {confidence !== undefined && (
+            <div className="mt-2 text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1 bg-[var(--background)] rounded-full border border-[var(--border)] opacity-60">
+              System Confidence: {(confidence * 100).toFixed(0)}%
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

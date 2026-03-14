@@ -16,13 +16,18 @@ export class SignalCalculator {
     return totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
   }
 
-  createMarketSignal(articles: Article[], summary: string, nepseIndex: number): Omit<MarketSignal, '_id'> {
+  createMarketSignal(
+    articles: Article[],
+    summaryResult: { narrative: string; weightedScore: number; confidence: number },
+    nepseIndex: number
+  ): Omit<MarketSignal, '_id'> {
     return {
       timestamp: new Date(),
-      overallScore: this.calculateWeightedScore(articles),
+      overallScore: summaryResult.weightedScore,
       nepseIndexAtTime: nepseIndex,
       articles,
-      summary,
+      summary: summaryResult.narrative,
+      confidence: summaryResult.confidence
     };
   }
 }

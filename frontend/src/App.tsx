@@ -23,6 +23,7 @@ function App() {
   const [mode, setMode] = useState<"light" | "dark">(
     (localStorage.getItem("artha-mode") as "light" | "dark") || "dark",
   );
+  const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", currentTheme);
@@ -33,6 +34,19 @@ function App() {
     document.documentElement.setAttribute("data-mode", mode);
     localStorage.setItem("artha-mode", mode);
   }, [mode]);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
+
+  const handleRefresh = async () => {
+    if (loading || cooldown > 0) return;
+    await triggerScrape();
+    setCooldown(600); // 60 seconds anti-spam cooldown
+  };
 
   return (
     <div className="min-h-screen text-[var(--text)] transition-colors duration-300">
@@ -91,15 +105,19 @@ function App() {
             </div>
 
             <button
-              onClick={triggerScrape}
-              disabled={loading}
-              className="btn-primary flex items-center gap-2.5 group whitespace-nowrap"
+              onClick={handleRefresh}
+              disabled={loading || cooldown > 0}
+              className="btn-primary flex items-center gap-2.5 group whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <RefreshCw
-                className={`w-4 h-4 transition-transform duration-500 ${loading ? "animate-spin" : "group-hover:rotate-180"}`}
+                className={`w-4 h-4 transition-transform duration-500 ${loading ? "animate-spin" : cooldown === 0 ? "group-hover:rotate-180" : ""}`}
               />
               <span className="text-sm tracking-tight text-white">
-                {loading ? "Synthesizing..." : "Refresh Intelligence"}
+                {loading
+                  ? "Synthesizing..."
+                  : cooldown > 0
+                    ? `Wait ${cooldown}s`
+                    : "Refresh Intelligence"}
               </span>
             </button>
           </div>
@@ -137,7 +155,10 @@ function App() {
             {/* Top Insight Row */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
               <div className="lg:col-span-4 h-full">
-                <ScoreGauge score={signal.overallScore} />
+                <ScoreGauge
+                  score={signal.overallScore}
+                  confidence={signal.confidence}
+                />
               </div>
 
               <div className="lg:col-span-8 flex flex-col h-full">
@@ -184,6 +205,16 @@ function App() {
                         </p>
                       </div>
                       <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-[var(--secondary)] mb-1">
+                          Confidence
+                        </p>
+                        <p className="text-lg font-bold font-display">
+                          {signal.confidence
+                            ? `${(signal.confidence * 100).toFixed(0)}%`
+                            : "N/A"}
+                        </p>
+                      </div>
+                      <div className="hidden sm:block">
                         <p className="text-[10px] font-black uppercase tracking-widest text-[var(--secondary)] mb-1">
                           Capture Time
                         </p>

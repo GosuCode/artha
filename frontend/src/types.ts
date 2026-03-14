@@ -8,6 +8,10 @@ export interface Article {
   sentimentScore: number;
   impactWeight: number;
   publishedAt?: string;
+  sectorConfidence?: number;
+  reasoning?: string;
+  tickers?: string[];
+  companies?: string[];
 }
 
 export interface MarketSignal {
@@ -17,4 +21,5 @@ export interface MarketSignal {
   nepseIndexAtTime: number;
   articles: Article[];
   summary: string;
+  confidence?: number;
 }

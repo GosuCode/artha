@@ -5,6 +5,7 @@ import {
   Search,
   Filter,
   X,
+  Clock,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { Article } from "../types";
@@ -18,6 +19,7 @@ export function ArticleList({ articles }: ArticleListProps) {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSector, setSelectedSector] = useState("All");
+  const [selectedTimeRange, setSelectedTimeRange] = useState("All");
 
   const categories = useMemo(
     () => ["All", ...new Set(articles.map((a) => a.category))],
@@ -29,7 +31,7 @@ export function ArticleList({ articles }: ArticleListProps) {
   );
 
   const filteredArticles = useMemo(() => {
-    return articles.filter((article) => {
+    let result = articles.filter((article) => {
       const matchesSearch = article.headline
         .toLowerCase()
         .includes(search.toLowerCase());
@@ -37,16 +39,54 @@ export function ArticleList({ articles }: ArticleListProps) {
         selectedCategory === "All" || article.category === selectedCategory;
       const matchesSector =
         selectedSector === "All" || article.sector === selectedSector;
-      return matchesSearch && matchesCategory && matchesSector;
+
+      // Time filtering logic
+      let matchesTime = true;
+      if (article.publishedAt && selectedTimeRange !== "All") {
+        const pubDate = new Date(article.publishedAt);
+        const now = new Date();
+        const diffMs = now.getTime() - pubDate.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+
+        if (selectedTimeRange === "Today") {
+          matchesTime = pubDate.toDateString() === now.toDateString();
+        } else if (selectedTimeRange === "24h") {
+          matchesTime = diffHours <= 24;
+        } else if (selectedTimeRange === "48h") {
+          matchesTime = diffHours <= 48;
+        }
+      }
+
+      return matchesSearch && matchesCategory && matchesSector && matchesTime;
     });
-  }, [articles, search, selectedCategory, selectedSector]);
+
+    // Order by date descending
+    return result.sort((a, b) => {
+      const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+      const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [articles, search, selectedCategory, selectedSector, selectedTimeRange]);
+
+  const formatPubDate = (date?: string | Date) => {
+    if (!date) return "N/A";
+    const d = new Date(date);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
 
   return (
     <div className="flex flex-col h-full uppercase tracking-tighter">
       {/* Header & Stats */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 px-2">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-white shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
+          <div className="p-2.5 bg-[var(--surface)] shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
             <Newspaper className="w-5 h-5" />
           </div>
           <div>
@@ -67,7 +107,7 @@ export function ArticleList({ articles }: ArticleListProps) {
             placeholder="Search signals..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-10 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[11px] font-bold tracking-widest focus:ring-2 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)] outline-none transition-all placeholder:text-[var(--secondary)] placeholder:opacity-30 text-[var(--text)] text-white"
+            className="w-full pl-12 pr-10 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl text-[11px] font-bold tracking-widest focus:ring-2 focus:ring-[var(--primary)]/10 focus:border-[var(--primary)] outline-none transition-all placeholder:text-[var(--secondary)] placeholder:opacity-30 text-[var(--text)]"
           />
           {search && (
             <button
@@ -139,14 +179,43 @@ export function ArticleList({ articles }: ArticleListProps) {
             ))}
         </select>
 
+        {/* Time Range Dropdown */}
+        <select
+          value={selectedTimeRange}
+          onChange={(e) => setSelectedTimeRange(e.target.value)}
+          className="appearance-none bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] px-4 py-2 rounded-xl text-[10px] font-black tracking-widest focus:border-[var(--primary)] outline-none cursor-pointer hover:bg-[var(--background)] transition-colors pr-8 relative"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 10px center",
+            backgroundSize: "12px",
+          }}
+        >
+          <option value="All" className="bg-[var(--surface)]">
+            All Time
+          </option>
+          <option value="Today" className="bg-[var(--surface)]">
+            Today
+          </option>
+          <option value="24h" className="bg-[var(--surface)]">
+            Last 24h
+          </option>
+          <option value="48h" className="bg-[var(--surface)]">
+            Last 48h
+          </option>
+        </select>
+
         {(selectedCategory !== "All" ||
           selectedSector !== "All" ||
+          selectedTimeRange !== "All" ||
           search !== "") && (
           <button
             onClick={() => {
               setSearch("");
               setSelectedCategory("All");
               setSelectedSector("All");
+              setSelectedTimeRange("All");
             }}
             className="text-[9px] font-black text-[var(--primary)] hover:underline ml-auto"
           >
@@ -177,6 +246,12 @@ export function ArticleList({ articles }: ArticleListProps) {
                   <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg bg-[var(--background)] text-[var(--secondary)] border border-[var(--border)] shadow-sm">
                     {article.sector}
                   </span>
+                  {article.publishedAt && (
+                    <div className="flex items-center gap-1 text-[10px] text-[var(--secondary)] opacity-60 font-black uppercase tracking-widest ml-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{formatPubDate(article.publishedAt)}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-[10px] text-[var(--secondary)] opacity-60 font-black uppercase tracking-widest ml-1">
                     <Scale className="w-3.5 h-3.5" />
                     <span>Impact: {article.impactWeight}x</span>
@@ -187,6 +262,37 @@ export function ArticleList({ articles }: ArticleListProps) {
                 <h4 className="font-bold text-[var(--text)] text-sm leading-snug mb-4 group-hover:text-[var(--primary)] transition-colors">
                   {article.headline}
                 </h4>
+
+                {/* Analyst Reasoning */}
+                {article.reasoning && (
+                  <div className="mb-5 p-3.5 bg-[var(--background)] rounded-xl border-l-[3px] border-[var(--primary)]/30">
+                    <p className="text-[11px] leading-relaxed text-[var(--text)] opacity-80 font-medium italic">
+                      "{article.reasoning}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Entity Tags */}
+                {(article.tickers?.length || article.companies?.length) && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {article.tickers?.map((ticker) => (
+                      <span
+                        key={ticker}
+                        className="px-2 py-0.5 bg-[var(--primary)]/10 text-[var(--primary)] text-[9px] font-black rounded-md border border-[var(--primary)]/20 shadow-sm"
+                      >
+                        ${ticker}
+                      </span>
+                    ))}
+                    {article.companies?.map((company) => (
+                      <span
+                        key={company}
+                        className="px-2 py-0.5 bg-[var(--secondary)]/10 text-[var(--secondary)] text-[9px] font-black rounded-md border border-[var(--border)] shadow-sm"
+                      >
+                        {company}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">

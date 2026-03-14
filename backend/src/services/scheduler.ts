@@ -45,16 +45,14 @@ export class SchedulerService {
             console.log(`📦 Processing ${scrapedNews.length} news items...`);
             const analyzedArticles = await this.analyzer.analyzeArticles(scrapedNews);
 
-            const overallScore = this.calculator.calculateWeightedScore(analyzedArticles);
-            const summary = this.analyzer.generateMarketSummary(analyzedArticles, overallScore);
-
+            const summaryResult = this.analyzer.generateMarketSummary(analyzedArticles);
             const liveIndex = await this.scraper.fetchLiveNepseIndex();
-            const signalData = this.calculator.createMarketSignal(analyzedArticles, summary, liveIndex);
+            const signalData = this.calculator.createMarketSignal(analyzedArticles, summaryResult, liveIndex);
 
             const signal = new MarketSignalModel(signalData);
             await signal.save();
 
-            console.log(`✅ Market signal updated at ${new Date().toISOString()}. Score: ${overallScore.toFixed(2)}`);
+            console.log(`✅ Market signal updated at ${new Date().toISOString()}. Score: ${summaryResult.weightedScore.toFixed(2)}`);
         } catch (error) {
             console.error('❌ Scheduled update failed:', error);
         }

@@ -53,10 +53,8 @@ router.post('/scrape/trigger', async (_req: Request, res: Response) => {
     const analyzedArticles = await analyzer.analyzeArticles(scrapedNews);
     console.log(`Analyzed ${analyzedArticles.length} articles`);
 
-    const overallScore = calculator.calculateWeightedScore(analyzedArticles);
-    const summary = analyzer.generateMarketSummary(analyzedArticles, overallScore);
-
-    const signalData = calculator.createMarketSignal(analyzedArticles, summary, liveIndex);
+    const summaryResult = analyzer.generateMarketSummary(analyzedArticles);
+    const signalData = calculator.createMarketSignal(analyzedArticles, summaryResult, liveIndex);
 
     // Save to MongoDB
     const signal = new MarketSignalModel(signalData);

@@ -22,7 +22,13 @@ const ArticleSchema = new Schema({
     },
     sentimentScore: { type: Number, required: true },
     impactWeight: { type: Number, required: true },
-    publishedAt: { type: Date }
+    publishedAt: { type: Date },
+    sectorConfidence: { type: Number },
+    reasoning: { type: String },
+    tickers: [{ type: String }],
+    companies: [{ type: String }],
+    clusterKey: { type: String },
+    modelUsed: { type: String }
 });
 
 const MarketSignalSchema = new Schema({
@@ -30,7 +36,8 @@ const MarketSignalSchema = new Schema({
     overallScore: { type: Number, required: true },
     nepseIndexAtTime: { type: Number, required: true },
     articles: [ArticleSchema],
-    summary: { type: String, required: true }
+    summary: { type: String, required: true },
+    confidence: { type: Number }
 });
 
 export interface MarketSignalDocument extends MarketSignal, Document {
