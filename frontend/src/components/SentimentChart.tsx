@@ -27,14 +27,11 @@ export function SentimentChart({ data }: ChartProps) {
     }))
     .reverse();
 
-  // If we have only one data point, Recharts doesn't show a line/area well.
-  // We can add a "dummy" start point if needed, but better to just ensure dots are visible.
-
   return (
     <div className="flex flex-col h-full uppercase tracking-tighter">
       <div className="flex items-center justify-between mb-8 px-2">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-white shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
+          <div className="p-2.5 bg-[var(--surface)] shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
             <ChartIcon className="w-5 h-5" />
           </div>
           <div>
@@ -63,7 +60,7 @@ export function SentimentChart({ data }: ChartProps) {
         </div>
       </div>
 
-      <div className="flex-1 bg-white border border-[var(--border)] rounded-3xl p-6 shadow-inner overflow-hidden">
+      <div className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 shadow-inner overflow-hidden">
         <ResponsiveContainer width="100%" height={340}>
           <AreaChart
             data={chartData}
@@ -87,7 +84,8 @@ export function SentimentChart({ data }: ChartProps) {
             <CartesianGrid
               strokeDasharray="10 10"
               vertical={false}
-              stroke="rgba(0,0,0,0.03)"
+              stroke="var(--border)"
+              strokeOpacity={0.3}
             />
 
             <XAxis
@@ -121,12 +119,14 @@ export function SentimentChart({ data }: ChartProps) {
                 strokeDasharray: "4 4",
               }}
               contentStyle={{
-                backgroundColor: "rgba(255, 255, 255, 0.98)",
+                backgroundColor: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: "16px",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.05)",
+                boxShadow: "var(--shadow)",
                 padding: "12px",
+                color: "var(--text)",
               }}
+              itemStyle={{ color: "var(--text)" }}
               labelStyle={{ display: "none" }}
             />
 
@@ -147,14 +147,14 @@ export function SentimentChart({ data }: ChartProps) {
               fill="url(#colorSentiment)"
               dot={{
                 r: 6,
-                fill: "white",
+                fill: "var(--surface)",
                 stroke: "var(--primary)",
                 strokeWidth: 3,
               }}
               activeDot={{
                 r: 8,
                 fill: "var(--primary)",
-                stroke: "white",
+                stroke: "var(--surface)",
                 strokeWidth: 2,
               }}
             />
@@ -168,7 +168,7 @@ export function SentimentChart({ data }: ChartProps) {
               strokeDasharray="5 5"
               fillOpacity={1}
               fill="url(#colorNepse)"
-              dot={{ r: 3, fill: "var(--accent)", stroke: "white" }}
+              dot={{ r: 3, fill: "var(--accent)", stroke: "var(--surface)" }}
             />
           </AreaChart>
         </ResponsiveContainer>

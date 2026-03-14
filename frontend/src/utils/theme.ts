@@ -1,14 +1,14 @@
 export const SENTIMENT_THRESHOLD = 0.2;
 
 export const COLORS = {
-    primary: '#98749e',
-    secondary: '#c6aeae',
-    accent: '#ac9689',
-    background: '#f7f4f7',
-    text: '#060406',
-    bullish: '#98749e',
-    bearish: '#ef4444',
-    neutral: '#ac9689',
+    primary: 'var(--primary)',
+    secondary: 'var(--secondary)',
+    accent: 'var(--accent)',
+    background: 'var(--background)',
+    text: 'var(--text)',
+    bullish: 'var(--sentiment-bullish)',
+    bearish: 'var(--sentiment-bearish)',
+    neutral: 'var(--sentiment-neutral)',
 };
 
 export const getSentimentType = (score: number) => {
@@ -25,12 +25,20 @@ export const getSentimentColor = (score: number) => {
 export const getCategoryTheme = (category: string) => {
     switch (category) {
         case 'Policy':
-            return 'bg-[#98749e15] text-[#98749e] border-[#98749e44]';
+            return 'bg-[var(--primary)] bg-opacity-10 text-[var(--primary)] border-[var(--primary)] border-opacity-30';
         case 'Dividend':
-            return 'bg-[#ac968915] text-[#ac9689] border-[#ac968944]';
+            return 'bg-[var(--accent)] bg-opacity-10 text-[var(--accent)] border-[var(--accent)] border-opacity-30';
         case 'Macro':
-            return 'bg-[#c6aeae30] text-[#060406] border-[#c6aeae44]';
+            return 'bg-[var(--secondary)] bg-opacity-20 text-[var(--text)] border-[var(--secondary)] border-opacity-30';
         default:
             return 'bg-gray-100 text-gray-400 border-gray-200';
     }
 };
+
+export const THEMES = [
+    { id: 'classic', name: 'Artha Classic', color: '#98749e' },
+    { id: 'berry', name: 'Berry Bloom', color: '#c6438a' },
+    { id: 'midnight', name: 'Midnight', color: '#38bdf8' },
+    { id: 'growth', name: 'Growth', color: '#059669' },
+    { id: 'royal', name: 'Royal Indigo', color: '#4f46e5' },
+];

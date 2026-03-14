@@ -5,16 +5,75 @@
 @tailwind utilities;
 
 :root {
+  /* Default: Dark Mode Base */
+  --text: #f8fafc;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --border: rgba(255, 255, 255, 0.05);
+  --glass: rgba(30, 41, 59, 0.8);
+  --shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+  
+  /* Default: Berry Accents */
+  --primary: #c6438a;
+  --secondary: #e099a0;
+  --accent: #d3766e;
+  --sentiment-bullish: #c6438a;
+  --sentiment-bearish: #ef4444;
+  --sentiment-neutral: #ac9689;
+}
+
+[data-mode='light'] {
   --text: #060406;
   --background: #f7f4f7;
-  --primary: #98749e;
-  --secondary: #c6aeae;
-  --accent: #ac9689;
-  
   --surface: #ffffff;
   --border: rgba(152, 116, 158, 0.1);
   --glass: rgba(255, 255, 255, 0.7);
   --shadow: 0 10px 40px -10px rgba(152, 116, 158, 0.1);
+}
+
+/* Base Dark Overrides (if switched) */
+[data-mode='dark'] {
+  --text: #f8fafc;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --border: rgba(255, 255, 255, 0.05);
+  --glass: rgba(30, 41, 59, 0.8);
+  --shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme='classic'] {
+  --primary: #98749e;
+  --secondary: #c6aeae;
+  --accent: #ac9689;
+  --sentiment-bullish: #98749e;
+}
+
+[data-theme='berry'] {
+  --primary: #c6438a;
+  --secondary: #e099a0;
+  --accent: #d3766e;
+  --sentiment-bullish: #c6438a;
+}
+
+[data-theme='midnight'] {
+  --primary: #38bdf8;
+  --secondary: #64748b;
+  --accent: #94a3b8;
+  --sentiment-bullish: #38bdf8;
+}
+
+[data-theme='growth'] {
+  --primary: #059669;
+  --secondary: #6ee7b7;
+  --accent: #10b981;
+  --sentiment-bullish: #059669;
+}
+
+[data-theme='royal'] {
+  --primary: #4f46e5;
+  --secondary: #a5b4fc;
+  --accent: #818cf8;
+  --sentiment-bullish: #4f46e5;
 }
 
 body {

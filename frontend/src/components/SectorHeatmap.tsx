@@ -33,7 +33,7 @@ export function SectorHeatmap({ articles }: SectorHeatmapProps) {
   return (
     <div className="flex flex-col h-full uppercase tracking-tighter">
       <div className="flex items-center gap-3 mb-8 px-2">
-        <div className="p-2.5 bg-white shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
+        <div className="p-2.5 bg-[var(--surface)] shadow-sm rounded-xl border border-[var(--border)] text-[var(--primary)]">
           <Layers className="w-5 h-5" />
         </div>
         <div>
@@ -61,25 +61,22 @@ export function SectorHeatmap({ articles }: SectorHeatmapProps) {
                   {data.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={
-                        entry.avgScore > 0.1
-                          ? "#98749e"
-                          : entry.avgScore < -0.1
-                            ? "#ef4444"
-                            : "#ac9689"
-                      }
+                      fill={getSentimentColor(entry.avgScore)}
                       fillOpacity={0.8}
                     />
                   ))}
                 </Pie>
                 <Tooltip
                   contentStyle={{
+                    backgroundColor: "var(--surface)",
                     borderRadius: "12px",
-                    border: "none",
+                    border: "1px solid var(--border)",
                     boxShadow: "var(--shadow)",
                     fontSize: "10px",
                     fontWeight: "bold",
+                    color: "var(--text)",
                   }}
+                  itemStyle={{ color: "var(--text)" }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -89,7 +86,7 @@ export function SectorHeatmap({ articles }: SectorHeatmapProps) {
             {data.slice(0, 5).map((sector, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between p-2 rounded-xl bg-gray-50 border border-[var(--border)]"
+                className="flex items-center justify-between p-2 rounded-xl bg-[var(--background)] border border-[var(--border)]"
               >
                 <div className="flex items-center gap-2">
                   <div
@@ -105,7 +102,8 @@ export function SectorHeatmap({ articles }: SectorHeatmapProps) {
                     {sector.value} Art.
                   </span>
                   <span
-                    className={`text-[10px] font-black ${sector.avgScore > 0 ? "text-[#98749e]" : sector.avgScore < 0 ? "text-red-500" : "text-gray-400"}`}
+                    className="text-[10px] font-black"
+                    style={{ color: getSentimentColor(sector.avgScore) }}
                   >
                     {sector.avgScore > 0 ? "+" : ""}
                     {sector.avgScore.toFixed(1)}

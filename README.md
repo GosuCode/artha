@@ -81,5 +81,5 @@ npm run dev
 
 ## Tech Stack
 
-- **Backend**: Node.js, TypeScript, Express, Firecrawl, Gemini 1.5 Flash
+- **Backend**: Node.js, TypeScript, Express, Firecrawl, gemini-flash-latest
 - **Frontend**: Vite, React, TypeScript, Recharts, Tailwind CSS, Lucide Icons

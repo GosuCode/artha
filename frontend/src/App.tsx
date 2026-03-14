@@ -1,33 +1,51 @@
 import {
   RefreshCw,
-  TrendingUp,
   BarChart3,
-  Activity,
   Command,
   Zap,
   Layers,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useSentiment } from "./hooks/useSentiment";
 import { ScoreGauge } from "./components/SentimentBadge";
 import { SentimentChart } from "./components/SentimentChart";
 import { ArticleList } from "./components/ArticleList";
 import { SectorHeatmap } from "./components/SectorHeatmap";
+import { THEMES } from "./utils/theme";
 
 function App() {
   const { signal, history, loading, error, triggerScrape } = useSentiment();
+  const [currentTheme, setCurrentTheme] = useState(
+    localStorage.getItem("artha-theme") || "berry",
+  );
+  const [mode, setMode] = useState<"light" | "dark">(
+    (localStorage.getItem("artha-mode") as "light" | "dark") || "dark",
+  );
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", currentTheme);
+    localStorage.setItem("artha-theme", currentTheme);
+  }, [currentTheme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-mode", mode);
+    localStorage.setItem("artha-mode", mode);
+  }, [mode]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen text-[var(--text)] transition-colors duration-300">
       {/* Dynamic Background */}
       <div className="fixed inset-0 z-[-1] overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--primary)] opacity-[0.03] blur-[120px] rounded-full"></div>
-        <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-[var(--accent)] opacity-[0.05] blur-[100px] rounded-full"></div>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[var(--primary)] opacity-[0.05] blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-5%] right-[-5%] w-[30%] h-[30%] bg-[var(--accent)] opacity-[0.08] blur-[100px] rounded-full"></div>
       </div>
 
       <header className="sticky top-0 z-50 bg-[var(--background)]/80 backdrop-blur-md border-b border-[var(--border)]">
         <div className="max-w-[1400px] mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-[var(--primary)] p-2.5 rounded-2xl shadow-lg shadow-[#98749e33] transform hover:rotate-6 transition-transform">
+            <div className="bg-[var(--primary)] p-2.5 rounded-2xl shadow-lg shadow-[var(--primary)]/20 transform hover:rotate-6 transition-transform">
               <Command className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -43,18 +61,48 @@ function App() {
             </div>
           </div>
 
-          <button
-            onClick={triggerScrape}
-            disabled={loading}
-            className="btn-primary flex items-center gap-2.5 group"
-          >
-            <RefreshCw
-              className={`w-4 h-4 transition-transform duration-500 ${loading ? "animate-spin" : "group-hover:rotate-180"}`}
-            />
-            <span className="text-sm tracking-tight">
-              {loading ? "Synthesizing..." : "Refresh Intelligence"}
-            </span>
-          </button>
+          <div className="flex items-center gap-6">
+            <div className="hidden lg:flex items-center gap-3 bg-[var(--surface)] bg-opacity-50 p-1.5 rounded-2xl border border-[var(--border)]">
+              <button
+                onClick={() => setMode(mode === "light" ? "dark" : "light")}
+                className="p-2 rounded-xl hover:bg-[var(--primary)] hover:bg-opacity-10 transition-colors text-[var(--secondary)]"
+                title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
+              >
+                {mode === "light" ? (
+                  <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
+              </button>
+
+              <div className="w-[1px] h-4 bg-[var(--border)]" />
+
+              <div className="flex items-center gap-2">
+                {THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setCurrentTheme(t.id)}
+                    title={t.name}
+                    className={`w-6 h-6 rounded-full border-2 transition-all ${currentTheme === t.id ? "border-[var(--primary)] scale-110" : "border-transparent opacity-40 hover:opacity-100"}`}
+                    style={{ backgroundColor: t.color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={triggerScrape}
+              disabled={loading}
+              className="btn-primary flex items-center gap-2.5 group whitespace-nowrap"
+            >
+              <RefreshCw
+                className={`w-4 h-4 transition-transform duration-500 ${loading ? "animate-spin" : "group-hover:rotate-180"}`}
+              />
+              <span className="text-sm tracking-tight text-white">
+                {loading ? "Synthesizing..." : "Refresh Intelligence"}
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 

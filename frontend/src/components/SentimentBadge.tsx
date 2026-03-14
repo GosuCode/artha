@@ -10,10 +10,10 @@ export function SentimentBadge({ score }: SentimentBadgeProps) {
 
   const getStyles = () => {
     if (type === "bullish")
-      return "bg-[#98749e15] text-[#98749e] border-[#98749e44]";
+      return "bg-[var(--sentiment-bullish)] bg-opacity-10 text-[var(--sentiment-bullish)] border-[var(--sentiment-bullish)] border-opacity-30";
     if (type === "bearish")
-      return "bg-[#ef444415] text-[#ef4444] border-[#ef444444]";
-    return "bg-[#c6aeae15] text-[#060406] border-[#c6aeae44]";
+      return "bg-[var(--sentiment-bearish)] bg-opacity-10 text-[var(--sentiment-bearish)] border-[var(--sentiment-bearish)] border-opacity-30";
+    return "bg-[var(--sentiment-neutral)] bg-opacity-10 text-[var(--text)] border-[var(--sentiment-neutral)] border-opacity-30";
   };
 
   const getLabel = () => {
@@ -77,7 +77,7 @@ export function ScoreGauge({ score }: ScoreGaugeProps) {
             cy="50"
             r="42"
             fill="none"
-            stroke="rgba(152, 116, 158, 0.05)"
+            stroke="var(--border)"
             strokeWidth="8"
             strokeLinecap="round"
           />
@@ -96,14 +96,14 @@ export function ScoreGauge({ score }: ScoreGaugeProps) {
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="bg-white/40 backdrop-blur-md p-6 rounded-full shadow-inner flex flex-col items-center border border-white/50">
+          <div className="bg-[var(--surface)] bg-opacity-40 backdrop-blur-md p-6 rounded-full shadow-inner flex flex-col items-center border border-[var(--border)]">
             <span className="text-5xl font-black font-display text-[var(--text)] tracking-tighter">
               {score > 0 ? "+" : ""}
               {score.toFixed(2)}
             </span>
             <div className="flex items-center gap-1.5 mt-1 opacity-50">
               <Activity className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text)]">
                 Index Signal
               </span>
             </div>

@@ -19,7 +19,7 @@ graph TD
     E -->|Fuzzy Jaccard Similarity| F[Unique Article Set]
 
     subgraph "AI Core: Native JSON Mode"
-        F --> G[Gemini 1.5 Flash Analysis]
+        F --> G[gemini-flash-latest Analysis]
         G --> G1[Sentiment Score -1 to +1]
         G --> G2[Sector Classification: Banking, Hydro, etc.]
         G --> G3[Category Classification: Policy, Macro, etc.]
