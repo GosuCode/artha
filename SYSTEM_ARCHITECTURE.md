@@ -38,10 +38,10 @@ graph TD
         K --> N[Intelligence Feed]
     end
 
-    style B1 fill:#f9f,stroke:#333,stroke-width:1px
-    style G fill:#98749e,stroke:#fff,stroke-width:2px,color:#fff
-    style J fill:#00ed64,stroke:#333
-    style K fill:#61dbfb,stroke:#333
+    style B1 fill:#e0f2fe,stroke:#0ea5e9,stroke-width:2px,color:#0369a1
+    style G fill:#ddd6fe,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95
+    style J fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#065f46
+    style K fill:#ecfeff,stroke:#06b6d4,stroke-width:2px,color:#0e7490
 ```
 
 ## 🧠 Core Components
