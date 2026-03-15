@@ -20,6 +20,7 @@ export function ArticleList({ articles }: ArticleListProps) {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSector, setSelectedSector] = useState("All");
   const [selectedTimeRange, setSelectedTimeRange] = useState("All");
+  const [selectedEventType, setSelectedEventType] = useState("All");
 
   const categories = useMemo(
     () => ["All", ...new Set(articles.map((a) => a.category))],
@@ -27,6 +28,15 @@ export function ArticleList({ articles }: ArticleListProps) {
   );
   const sectors = useMemo(
     () => ["All", ...new Set(articles.map((a) => a.sector))],
+    [articles],
+  );
+  const eventTypes = useMemo(
+    () => [
+      "All",
+      ...new Set(
+        articles.map((a) => a.eventType).filter((e) => e && e !== "None"),
+      ),
+    ],
     [articles],
   );
 
@@ -39,6 +49,8 @@ export function ArticleList({ articles }: ArticleListProps) {
         selectedCategory === "All" || article.category === selectedCategory;
       const matchesSector =
         selectedSector === "All" || article.sector === selectedSector;
+      const matchesEvent =
+        selectedEventType === "All" || article.eventType === selectedEventType;
 
       // Time filtering logic
       let matchesTime = true;
@@ -57,7 +69,13 @@ export function ArticleList({ articles }: ArticleListProps) {
         }
       }
 
-      return matchesSearch && matchesCategory && matchesSector && matchesTime;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesSector &&
+        matchesTime &&
+        matchesEvent
+      );
     });
 
     // Order by date descending
@@ -206,9 +224,35 @@ export function ArticleList({ articles }: ArticleListProps) {
           </option>
         </select>
 
+        {/* Event Type Dropdown */}
+        <select
+          value={selectedEventType}
+          onChange={(e) => setSelectedEventType(e.target.value)}
+          className="appearance-none bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] px-4 py-2 rounded-xl text-[10px] font-black tracking-widest focus:border-[var(--primary)] outline-none cursor-pointer hover:bg-[var(--background)] transition-colors pr-8 relative"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 10px center",
+            backgroundSize: "12px",
+          }}
+        >
+          <option value="All" className="bg-[var(--surface)]">
+            All Events
+          </option>
+          {eventTypes
+            .filter((e) => e !== "All")
+            .map((e) => (
+              <option key={e} value={e} className="bg-[var(--surface)]">
+                {e}
+              </option>
+            ))}
+        </select>
+
         {(selectedCategory !== "All" ||
           selectedSector !== "All" ||
           selectedTimeRange !== "All" ||
+          selectedEventType !== "All" ||
           search !== "") && (
           <button
             onClick={() => {
@@ -216,6 +260,7 @@ export function ArticleList({ articles }: ArticleListProps) {
               setSelectedCategory("All");
               setSelectedSector("All");
               setSelectedTimeRange("All");
+              setSelectedEventType("All");
             }}
             className="text-[9px] font-black text-[var(--primary)] hover:underline ml-auto"
           >
@@ -246,6 +291,11 @@ export function ArticleList({ articles }: ArticleListProps) {
                   <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg bg-[var(--background)] text-[var(--secondary)] border border-[var(--border)] shadow-sm">
                     {article.sector}
                   </span>
+                  {article.eventType && article.eventType !== "None" && (
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg bg-[var(--primary)]/10 text-[var(--primary)] border border-[var(--primary)]/20 shadow-sm animate-pulse">
+                      ⚡ {article.eventType}
+                    </span>
+                  )}
                   {article.publishedAt && (
                     <div className="flex items-center gap-1 text-[10px] text-[var(--secondary)] opacity-60 font-black uppercase tracking-widest ml-1">
                       <Clock className="w-3.5 h-3.5" />

@@ -1,4 +1,17 @@
-export type NewsCategory = 'Policy' | 'Dividend' | 'Macro' | 'General';
+export type NewsCategory = 'Policy' | 'Dividend' | 'Macro' | 'General' | 'Company-Specific';
+
+export type EventType =
+  | 'Rights Issue'
+  | 'Merger'
+  | 'Lock-in Release'
+  | 'Promoter Selloff'
+  | 'Quarterly Report'
+  | 'Auction'
+  | 'Sanction'
+  | 'Rating Change'
+  | 'Dividend Declaration'
+  | 'Monetary Policy'
+  | 'None';
 
 export type MarketSector =
   | 'Banking'
@@ -22,6 +35,7 @@ export interface Article {
   url: string;
   content: string;
   category: NewsCategory;
+  eventType: EventType;
   sector: MarketSector;
   sentimentScore: number;
   impactWeight: number;
@@ -55,6 +69,7 @@ export interface ScrapedNews {
 export interface SentimentAnalysisResult {
   sentimentScore: number;
   category: NewsCategory;
+  eventType: EventType;
   sector: MarketSector;
   impactWeight: number;
   reasoning: string;
@@ -63,3 +78,4 @@ export interface SentimentAnalysisResult {
   tickers?: string[];
   companies?: string[];
 }
+

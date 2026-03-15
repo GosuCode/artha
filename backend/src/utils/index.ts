@@ -1,42 +1,86 @@
 // Core utility functions for Artha
 
+export const SOURCE_CREDIBILITY: Record<string, number> = {
+  'NEPSE': 1.5,
+  'NRB': 1.5,
+  'SEBON': 1.5,
+  'Sharesansar': 1.1,
+  'NepseAlpha': 1.1,
+  'Bizmandu': 1.0,
+  'Merolagani': 1.0,
+  'Bizshala': 0.9,
+  'Investopaper': 0.9,
+  'NewBizAge': 0.9,
+};
+
 export class ResponseParser {
   static cleanJsonResponse(response: string): string {
     if (!response) return "";
 
-    // 1. Try to find markdown code block
-    const markdownMatch = response.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    let cleaned = markdownMatch ? markdownMatch[1] : response;
+    // 1. Remove markdown code blocks
+    let cleaned = response.replace(/```(?:json)?\s*([\s\S]*?)\s*```/g, '$1');
 
-    // 2. Find the boundary of the first valid-looking object or array
-    const firstBrace = cleaned.indexOf('{');
-    const firstBracket = cleaned.indexOf('[');
+    // 2. Find the start of the first object or array
+    const startIdx = cleaned.search(/[\{\[]/);
+    if (startIdx === -1) return cleaned.trim();
 
-    let startIdx = -1;
-    let endChar = '';
+    cleaned = cleaned.substring(startIdx);
 
-    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-      startIdx = firstBrace;
-      endChar = '}';
-    } else if (firstBracket !== -1) {
-      startIdx = firstBracket;
-      endChar = ']';
+    // 3. Find the last matching bracket/brace to handle trailing garbage
+    const endChar = cleaned[0] === '{' ? '}' : ']';
+    const lastEndIdx = cleaned.lastIndexOf(endChar);
+
+    if (lastEndIdx !== -1) {
+      cleaned = cleaned.substring(0, lastEndIdx + 1);
     }
 
-    if (startIdx === -1) return cleaned;
-
-    const lastEndChar = cleaned.lastIndexOf(endChar);
-    if (lastEndChar === -1) return cleaned.substring(startIdx);
-
-    cleaned = cleaned.substring(startIdx, lastEndChar + 1);
-
-    // 3. Robust Fix: Replace literal newlines inside strings with \n
-    cleaned = cleaned.replace(/"([^"]*)"/g, (_, p1) => {
+    // 4. Robust Fix for literal newlines in strings
+    cleaned = cleaned.replace(/"((?:\\.|[^"\\])*)"/g, (_, p1) => {
       return '"' + p1.replace(/\n/g, '\\n').replace(/\r/g, '\\r') + '"';
     });
 
-    // 4. Remove potential trailing commas
-    cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
+    // 5. Remove trailing commas before closing braces/brackets
+    cleaned = cleaned.replace(/,\s*([\}\]])/g, '$1');
+
+    return cleaned.trim();
+  }
+
+  static fixTruncatedJson(json: string): string {
+    let cleaned = json.trim();
+    if (!cleaned) return "";
+
+    // 1. If it ends with a comma, remove it
+    cleaned = cleaned.replace(/,\s*$/, '');
+
+    // 2. Fix unterminated strings
+    const quoteMatches = cleaned.match(/"/g) || [];
+    const escapedQuoteMatches = cleaned.match(/\\"/g) || [];
+    const realQuoteCount = quoteMatches.length - escapedQuoteMatches.length;
+
+    if (realQuoteCount % 2 !== 0) {
+      cleaned += '"';
+    }
+
+    // 3. Remove trailing colons or partial keys/values
+    // Handle cases like: "key": , "key": "val... , "key"
+    cleaned = cleaned.replace(/,\s*"[^"]*"\s*:\s*$/, '');
+    cleaned = cleaned.replace(/\{\s*"[^"]*"\s*:\s*$/, '{');
+    cleaned = cleaned.replace(/\[\s*"[^"]*"\s*:\s*$/, '[');
+    cleaned = cleaned.replace(/,\s*"[^"]*"\s*$/, '');
+    cleaned = cleaned.replace(/\{\s*"[^"]*"\s*$/, '{');
+    cleaned = cleaned.replace(/\[\s*"[^"]*"\s*$/, '[');
+
+    // 4. Close open braces and brackets
+    const openBraces = (cleaned.match(/\{/g) || []).length;
+    const closeBraces = (cleaned.match(/\}/g) || []).length;
+    const openBrackets = (cleaned.match(/\[/g) || []).length;
+    const closeBrackets = (cleaned.match(/\]/g) || []).length;
+
+    const neededBrackets = Math.max(0, openBrackets - closeBrackets);
+    const neededBraces = Math.max(0, openBraces - closeBraces);
+
+    for (let i = 0; i < neededBrackets; i++) cleaned += ']';
+    for (let i = 0; i < neededBraces; i++) cleaned += '}';
 
     return cleaned;
   }
@@ -45,15 +89,24 @@ export class ResponseParser {
     if (!response) return fallback;
 
     try {
+      // First attempt: direct parse
       return JSON.parse(response) as T;
     } catch (e) {
       try {
+        // Second attempt: clean markdown and whitespace
         const cleaned = this.cleanJsonResponse(response);
-        const parsed = JSON.parse(cleaned);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed[0] as T;
-        return parsed as T;
+        try {
+          return JSON.parse(cleaned) as T;
+        } catch {
+          // Third attempt: fix truncation (unclosed braces, strings etc)
+          const fixed = this.fixTruncatedJson(cleaned);
+          const parsed = JSON.parse(fixed);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed[0] as T;
+          return parsed as T;
+        }
       } catch (error) {
-        console.error('[JSON Parser] Critical Failure.');
+        console.error(`[JSON Parser] Critical Failure: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`[JSON Parser] Problematic response: ${response && response.length > 200 ? response.substring(0, 200) + '...' : response}`);
         return fallback;
       }
     }
@@ -77,6 +130,14 @@ export class MathUtils {
   }
 }
 
+export const VALID_SECTORS = [
+  'Banking', 'Development Bank', 'Finance', 'Hotels & Tourism',
+  'Hydropower', 'Investment', 'Life Insurance', 'Manufacturing & Processing',
+  'Microfinance', 'Mutual Fund', 'Non Life Insurance', 'Others', 'Trading', 'Market-wide'
+] as const;
+
+export type Sector = typeof VALID_SECTORS[number];
+
 export class MarketClassifier {
   static isPolicyNews(text: string): boolean {
     return /nrb|nepal rastra bank|monetary policy|interest rate|banking regulation|government policy|budget|tax|sebon|directive|circular|repo rate|crr|slr/.test(text.toLowerCase());
@@ -90,25 +151,102 @@ export class MarketClassifier {
     return /inflation|gdp|remittance|foreign exchange|forex|liquidity|economic growth|recession|macro|cpi|trade deficit/.test(text.toLowerCase());
   }
 
+  static inferEventType(text: string): string {
+    const t = text.toLowerCase();
+    if (/rights issue|right share/.test(t)) return 'Rights Issue';
+    if (/merger|acquisition|unite/.test(t)) return 'Merger';
+    if (/lock-in|lockin|release/.test(t)) return 'Lock-in Release';
+    if (/promoter|sell-off|auction/.test(t)) return 'Promoter Selloff';
+    if (/quarterly report|q1|q2|q3|q4|financial report/.test(t)) return 'Quarterly Report';
+    if (/auction/.test(t)) return 'Auction';
+    if (/sanction|fine|penalty/.test(t)) return 'Sanction';
+    if (/rating|crisil|icra/.test(t)) return 'Rating Change';
+    if (/dividend|bonus/.test(t)) return 'Dividend Declaration';
+    if (/monetary policy/.test(t)) return 'Monetary Policy';
+    return 'None';
+  }
+
   static inferSector(text: string): string {
     const t = text.toLowerCase();
     if (/microfinance/.test(t)) return 'Microfinance';
-    if (/bank|banking|commercial bank|development bank/.test(t)) return 'Banking';
+    if (/bank|banking|commercial bank/.test(t)) return 'Banking';
+    if (/development bank/.test(t)) return 'Development Bank';
     if (/hydro|hydropower|electricity|energy/.test(t)) return 'Hydropower';
     if (/finance|merchant bank|lending/.test(t)) return 'Finance';
-    if (/insurance|life insurance|non-life insurance/.test(t)) return 'Insurance';
+    if (/life insurance/.test(t)) return 'Life Insurance';
+    if (/non-life insurance|non life insurance/.test(t)) return 'Non Life Insurance';
     if (/hotel|tourism|aviation/.test(t)) return 'Hotels & Tourism';
-    if (/manufacturing|cement|industry/.test(t)) return 'Manufacturing';
-    if (/investment|mutual fund/.test(t)) return 'Investment';
+    if (/manufacturing|cement|industry|distillery/.test(t)) return 'Manufacturing & Processing';
+    if (/mutual fund/.test(t)) return 'Mutual Fund';
+    if (/investment/.test(t)) return 'Investment';
+    if (/trading/.test(t)) return 'Trading';
     return 'Market-wide';
+  }
+
+  static normalizeSector(sector: string): Sector {
+    if (!sector) return 'Market-wide';
+
+    // Exact match check
+    const found = VALID_SECTORS.find(s => s.toLowerCase() === sector.toLowerCase());
+    if (found) return found as Sector;
+
+    // Fuzzy/Mapping check
+    const s = sector.toLowerCase();
+    if (s.includes('general') || s.includes('none') || s.includes('overall') || s.includes('all')) return 'Market-wide';
+    if (s.includes('bank')) {
+      if (s.includes('development')) return 'Development Bank';
+      return 'Banking';
+    }
+    if (s.includes('microfinance')) return 'Microfinance';
+    if (s.includes('hydro')) return 'Hydropower';
+    if (s.includes('insurance')) {
+      if (s.includes('non')) return 'Non Life Insurance';
+      return 'Life Insurance';
+    }
+    if (s.includes('hotel') || s.includes('tourism')) return 'Hotels & Tourism';
+    if (s.includes('manufact') || s.includes('processing')) return 'Manufacturing & Processing';
+    if (s.includes('finance')) return 'Finance';
+    if (s.includes('mutual fund')) return 'Mutual Fund';
+    if (s.includes('investment')) return 'Investment';
+    if (s.includes('trading')) return 'Trading';
+
+    return 'Others';
   }
 
   static policySectorOverride(text: string, currentSector: string): string {
     const t = text.toLowerCase();
-    if (/bank|banking|development bank|commercial bank/.test(t)) return 'Banking';
+    if (/bank|banking|commercial bank/.test(t)) return 'Banking';
     if (/microfinance/.test(t)) return 'Microfinance';
-    if (/insurance/.test(t)) return 'Insurance';
+    if (/insurance/.test(t)) return 'Life Insurance';
     return currentSector || 'Market-wide';
+  }
+
+  static normalizeCategory(category: string): string {
+    const c = String(category || 'General');
+    const valid = ['Policy', 'Dividend', 'Macro', 'General', 'Company-Specific'];
+    const found = valid.find(v => v.toLowerCase() === c.toLowerCase());
+    return found || 'General';
+  }
+
+  static normalizeEventType(eventType: string): string {
+    const e = String(eventType || 'None');
+    const valid = [
+      'Rights Issue', 'Merger', 'Lock-in Release', 'Promoter Selloff',
+      'Quarterly Report', 'Auction', 'Sanction', 'Rating Change',
+      'Dividend Declaration', 'Monetary Policy', 'None'
+    ];
+    const found = valid.find(v => v.toLowerCase() === e.toLowerCase());
+    if (found) return found;
+
+    // Mapping
+    if (e.includes('right')) return 'Rights Issue';
+    if (e.includes('merger') || e.includes('acquisition')) return 'Merger';
+    if (e.includes('quarter') || e.includes('report')) return 'Quarterly Report';
+    if (e.includes('dividend')) return 'Dividend Declaration';
+    if (e.includes('lock')) return 'Lock-in Release';
+    if (e.includes('policy')) return 'Monetary Policy';
+
+    return 'None';
   }
 }
 

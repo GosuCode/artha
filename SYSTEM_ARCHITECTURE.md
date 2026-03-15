@@ -81,6 +81,18 @@ A modern UI designed with a custom thematic palette (`#98749e` Primary).
 - **Sector Activity Heatmap**: A donut chart visualizing news volume and average sentiment for specific industries.
 - **Intelligence Feed**: Displays the "Sector" and "Category" for every analyzed story, allowing for granular audit of the AI's reasoning.
 
+### 6. Ticker Dictionary & Entity Mapping
+
+A centralized dictionary (`tickers.ts`) maps company names to official NEPSE symbols. The `AnalysisEngine` uses this to enrich signals, ensuring that "Nabil Bank" and "NABIL" are seen as the same entity.
+
+### 7. Credibility & Authority Weighting
+
+Sources are no longer equal. Official entities like **NRB**, **NEPSE**, and **SEBON** carry a 1.5x multiplier on their impact weight, while general news portals are normalized to their historical accuracy.
+
+### 8. Event-type Layer
+
+Beyond sentiment, the engine now classifies events into specific categories like `Rights Issue`, `Merger`, `Lock-in Release`, and `Promoter Selloff`. This allows for specialized trigger rules (e.g., Lock-in release usually signals potential downward pressure).
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, Tailwind CSS, Recharts, Lucide.
@@ -90,4 +102,4 @@ A modern UI designed with a custom thematic palette (`#98749e` Primary).
 
 ---
 
-_Artha v2.5 - Advanced Sector Intelligence for NEPSE._
+_Artha v3.0 - Predictive Market Intelligence for NEPSE._

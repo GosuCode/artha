@@ -3,7 +3,8 @@ export interface Article {
   source: string;
   url: string;
   content: string;
-  category: 'Policy' | 'Dividend' | 'Macro' | 'General';
+  category: 'Policy' | 'Dividend' | 'Macro' | 'General' | 'Company-Specific';
+  eventType: string;
   sector: string;
   sentimentScore: number;
   impactWeight: number;

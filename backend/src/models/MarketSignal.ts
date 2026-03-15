@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import type { MarketSignal } from '../types.js';
+import { VALID_SECTORS } from '../utils/index.js';
 
 const ArticleSchema = new Schema({
     headline: { type: String, required: true },
@@ -8,16 +9,21 @@ const ArticleSchema = new Schema({
     content: { type: String, required: true },
     category: {
         type: String,
-        enum: ['Policy', 'Dividend', 'Macro', 'General'],
+        enum: ['Policy', 'Dividend', 'Macro', 'General', 'Company-Specific'],
+        required: true
+    },
+    eventType: {
+        type: String,
+        enum: [
+            'Rights Issue', 'Merger', 'Lock-in Release', 'Promoter Selloff',
+            'Quarterly Report', 'Auction', 'Sanction', 'Rating Change',
+            'Dividend Declaration', 'Monetary Policy', 'None'
+        ],
         required: true
     },
     sector: {
         type: String,
-        enum: [
-            'Banking', 'Development Bank', 'Finance', 'Hotels & Tourism',
-            'Hydropower', 'Investment', 'Life Insurance', 'Manufacturing & Processing',
-            'Microfinance', 'Mutual Fund', 'Non Life Insurance', 'Others', 'Trading', 'Market-wide'
-        ],
+        enum: [...VALID_SECTORS],
         required: true
     },
     sentimentScore: { type: Number, required: true },

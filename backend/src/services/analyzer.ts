@@ -1,19 +1,23 @@
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import pLimit from 'p-limit';
 import { config } from '../config.js';
-import type { Article, ScrapedNews, NewsCategory, MarketSector } from '../types.js';
+import type { Article, ScrapedNews } from '../types.js';
 import {
   ResponseParser,
   ErrorHandler,
   MathUtils,
   SentimentReporter,
   MarketClassifier,
-  NewsDeduplicator
+  NewsDeduplicator,
+  SOURCE_CREDIBILITY,
+  VALID_SECTORS
 } from '../utils/index.js';
+import { findCompanyByText } from '../utils/tickers.js';
 
 type RawAnalysisResponse = {
   sentimentScore?: unknown;
   category?: unknown;
+  eventType?: unknown;
   sector?: unknown;
   sectorConfidence?: unknown;
   impactWeight?: unknown;
@@ -38,21 +42,22 @@ export type MarketSummaryResult = {
   narrative: string;
 };
 
-const ALLOWED_CATEGORIES: NewsCategory[] = ['Policy', 'Dividend', 'Macro', 'General'];
+
 
 const ANALYSIS_SCHEMA = {
   type: 'object',
   properties: {
     sentimentScore: { type: 'number' },
-    category: { type: 'string', enum: ['Policy', 'Dividend', 'Macro', 'General'] },
-    sector: { type: 'string' },
+    category: { type: 'string', enum: ['Policy', 'Dividend', 'Macro', 'General', 'Company-Specific'] },
+    eventType: { type: 'string' },
+    sector: { type: 'string', enum: [...VALID_SECTORS] },
     sectorConfidence: { type: 'number' },
     impactWeight: { type: 'number' },
     reasoning: { type: 'string' },
     tickers: { type: 'array', items: { type: 'string' } },
     companies: { type: 'array', items: { type: 'string' } },
   },
-  required: ['sentimentScore', 'category', 'sector', 'sectorConfidence', 'impactWeight', 'reasoning', 'tickers', 'companies'],
+  required: ['sentimentScore', 'category', 'eventType', 'sector', 'sectorConfidence', 'impactWeight', 'reasoning', 'tickers', 'companies'],
 } as const;
 
 export class AnalysisEngine {
@@ -75,7 +80,7 @@ export class AnalysisEngine {
           responseMimeType: 'application/json',
           responseSchema: ANALYSIS_SCHEMA as any,
           temperature: 0.1,
-          maxOutputTokens: 500,
+          maxOutputTokens: 1000,
         },
       })
     );
@@ -134,8 +139,9 @@ Content: ${news.content.slice(0, 4000)}
 Return ONLY valid JSON:
 {
   "sentimentScore": -1 to 1,
-  "category": "Policy" | "Dividend" | "Macro" | "General",
-  "sector": string,
+  "category": "Policy" | "Dividend" | "Macro" | "General" | "Company-Specific",
+  "eventType": "Rights Issue" | "Merger" | "Lock-in Release" | "Promoter Selloff" | "Quarterly Report" | "Auction" | "Sanction" | "Rating Change" | "Dividend Declaration" | "Monetary Policy" | "None",
+  "sector": ${VALID_SECTORS.map(s => `"${s}"`).join(' | ')},
   "sectorConfidence": 0 to 1,
   "impactWeight": 1 to 3.5,
   "reasoning": string (concise),
@@ -148,13 +154,23 @@ Return ONLY valid JSON:
   private parseResponse(response: string, model: string, news: ScrapedNews): Article & { modelUsed: string } {
     const parsed = ResponseParser.safeJsonParse<RawAnalysisResponse>(response, {});
 
+    if (!parsed || Object.keys(parsed).length === 0) {
+      throw new Error('Failed to parse analysis response');
+    }
+
+    // Apply source credibility weighting
+    const sourceCred = SOURCE_CREDIBILITY[news.source] || 1.0;
+    const rawImpact = MathUtils.clamp(Number(parsed.impactWeight) || 1.0, 1, 3.5);
+    const impactWeight = rawImpact * sourceCred;
+
     const result: Article & { modelUsed: string } = {
       ...news,
       sentimentScore: MathUtils.clamp(Number(parsed.sentimentScore) || 0, -1, 1),
-      category: (ALLOWED_CATEGORIES.includes(parsed.category as any) ? parsed.category : 'General') as NewsCategory,
-      sector: (parsed.sector || 'Market-wide') as MarketSector,
+      category: MarketClassifier.normalizeCategory(String(parsed.category || 'General')) as any,
+      eventType: MarketClassifier.normalizeEventType(String(parsed.eventType || 'None')) as any,
+      sector: MarketClassifier.normalizeSector(String(parsed.sector || 'Market-wide')),
       sectorConfidence: MathUtils.clamp(Number(parsed.sectorConfidence) || 0.3, 0, 1),
-      impactWeight: MathUtils.clamp(Number(parsed.impactWeight) || 1.0, 1, 3.5),
+      impactWeight,
       reasoning: String(parsed.reasoning || '').slice(0, 200),
       tickers: Array.isArray(parsed.tickers) ? parsed.tickers.map(String) : this.extractTickers(news),
       companies: Array.isArray(parsed.companies) ? parsed.companies.map(String) : this.extractCompanies(news),
@@ -169,17 +185,34 @@ Return ONLY valid JSON:
     const text = `${news.headline} ${news.content}`.toLowerCase();
     const updated = { ...analysis };
 
+    // Trigger Rule: NRB rate cut + banking liquidity
+    if (/rate cut|interest rate reduction|policy rate lowered/.test(text) && /liquidity|easing/.test(text)) {
+      if (updated.sector === 'Banking' || updated.sector === 'Finance') {
+        updated.sentimentScore = Math.min(updated.sentimentScore + 0.3, 1.0);
+        updated.impactWeight *= 1.2;
+        updated.reasoning = `[Trigger: Policy Easing] ${updated.reasoning}`;
+      }
+    }
+
     if (MarketClassifier.isPolicyNews(text)) {
       updated.category = 'Policy';
       updated.impactWeight = Math.max(updated.impactWeight, 3.0);
-      updated.sector = MarketClassifier.policySectorOverride(text, updated.sector) as MarketSector;
+      updated.sector = MarketClassifier.policySectorOverride(text, updated.sector) as any;
     } else if (MarketClassifier.isDividendNews(text)) {
       updated.category = 'Dividend';
       updated.impactWeight = Math.max(updated.impactWeight, 2.0);
-      updated.sentimentScore = Math.max(updated.sentimentScore, 0.2);
+      if (updated.sentimentScore > 0) updated.sentimentScore = Math.max(updated.sentimentScore, 0.4);
     } else if (MarketClassifier.isMacroNews(text)) {
       updated.category = 'Macro';
       updated.impactWeight = Math.max(updated.impactWeight, 2.5);
+    }
+
+    // Ticker enrichment from dictionary
+    const foundCompany = findCompanyByText(text);
+    if (foundCompany && !updated.tickers?.includes(foundCompany.ticker)) {
+      updated.tickers = [...(updated.tickers || []), foundCompany.ticker];
+      updated.companies = [...(updated.companies || []), foundCompany.name];
+      if (updated.sector === 'Market-wide') updated.sector = foundCompany.sector as any;
     }
 
     return updated;
@@ -191,8 +224,9 @@ Return ONLY valid JSON:
       ...news,
       sentimentScore: 0,
       category: 'General',
-      sector: MarketClassifier.inferSector(text) as MarketSector,
-      impactWeight: 1.0,
+      eventType: MarketClassifier.inferEventType(text) as any,
+      sector: MarketClassifier.inferSector(text) as any,
+      impactWeight: 1.0 * (SOURCE_CREDIBILITY[news.source] || 1.0),
       reasoning: 'Heuristic fallback applied.',
       modelUsed: 'heuristic',
       tickers: this.extractTickers(news),
